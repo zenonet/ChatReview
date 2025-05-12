@@ -10,12 +10,10 @@ const props = defineProps({
 </script>
 
 <template>
-<div>
     <div class="msg-list">
         <ChatMessage v-for="msg in chat.messages" :message="msg">            
         </ChatMessage>
     </div>    
-</div>
 </template>
 
 <style scoped>
@@ -24,6 +22,7 @@ const props = defineProps({
 .msg-list{
     display: flex;
     flex-direction: column;
+    max-width: 80vw;
 }
 
 </style>
