@@ -7,6 +7,7 @@ const props = defineProps({
     chat: { required: true, type: Chat}
 })
 
+console.log(props.chat)
 </script>
 
 <template>

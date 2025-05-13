@@ -4,6 +4,7 @@
 import { defineComponent } from 'vue';
 import ChatView from './components/ChatView.vue';
 import { Chat, Message } from './model/chat';
+import AsyncChatViewFromApi from './components/AsyncChatViewFromApi.vue';
 
 
 let messages: Message[] = [
@@ -19,9 +20,7 @@ chat.messages = messages;
 
 <template>
   <div class="content">
-    <ChatView
-      :chat="chat">
-    </ChatView>
+    <AsyncChatViewFromApi></AsyncChatViewFromApi>
   </div>
 </template>
 
