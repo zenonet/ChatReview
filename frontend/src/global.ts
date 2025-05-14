@@ -5,7 +5,7 @@ export const API_URL = "http://127.0.0.1:2555"; //TODO: make https
 
 export let appState = reactive({
     auth: {
-        async login(username: String, password: String) {
+        async login(username: String, password: String):Promise<boolean> {
             let res = await fetch(API_URL + "/login/", {
                 method: "POST",
                 body: JSON.stringify({
@@ -23,13 +23,15 @@ export let appState = reactive({
                     this.accessToken = content.token;
                     console.log("Logged in successfully!");
                     this.loggedIn = true;
-                    break;
+                    this.error = null;
+                    return true;
                 case 401:
                     this.error = "Wrong username or password";
                     break;
                 default:
                     this.error = "An error occured";
             }
+            return false;
         },
         async register(username: String, password: String) {
             let res = await fetch(API_URL + "/register/", {
@@ -48,6 +50,7 @@ export let appState = reactive({
                 this.accessToken = content.token;
                 console.log("Registered successfully!");
                 this.loggedIn = true;
+                this.error = null;
             }
         },
         loggedIn: false,

@@ -1,22 +1,30 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { API_URL, appState } from '../global';
 
 
 let username = ref("");
 let password = ref("");
 
-async function loginClick(){
-    await appState.auth.login(username.value, password.value);
+let errorCounter = ref(0);
+
+async function loginClick() {
+    if (!await appState.auth.login(username.value, password.value)) {
+        errorCounter.value++;
+    }else{
+        errorCounter.value = 0;
+    }
 }
 
-async function registerClick(){
+async function registerClick() {
+    errorCounter.value = 0;
     await appState.auth.register(username.value, password.value);
 }
 
-
-
 let errorDisplayState = computed(() => appState.auth.error === null ? "none" : "block");
+
+let errorMsg = computed(() =>
+    appState.auth.error + (errorCounter.value > 1 ? " (" + errorCounter.value + "x)" : ""));
 
 </script>
 
@@ -25,17 +33,17 @@ let errorDisplayState = computed(() => appState.auth.error === null ? "none" : "
         <div class="login-container">
             <div class="field-container">
                 <label>Username</label>
-                <input v-model="username" maxlength="128"/>
+                <input v-model="username" maxlength="128" />
             </div>
 
             <div class="field-container">
                 <label>Password</label>
-                <input 
-                    v-model="password"
-                    type="password"/>
+                <input v-model="password" type="password" />
             </div>
 
-            <span style="color: red; display: none" :style="{ 'display': errorDisplayState}">{{ appState.auth.error }}</span>
+            <span style="color: red; display: none" :style="{ 'display': errorDisplayState }">
+                {{ errorMsg }}
+            </span>
 
             <div style="display: flex">
                 <button v-on:click="loginClick">
@@ -50,8 +58,7 @@ let errorDisplayState = computed(() => appState.auth.error === null ? "none" : "
 </template>
 
 <style scoped>
-
-.field-container{
+.field-container {
     display: flex;
     flex-direction: column;
 }
@@ -76,20 +83,19 @@ let errorDisplayState = computed(() => appState.auth.error === null ? "none" : "
 }
 
 
-input{
+input {
     padding: 10pt;
     font-size: 1.5em;
 }
 
-button{
+button {
     padding: 10pt;
     background: white;
     border: black 2px solid;
     border-radius: 10%;
 }
 
-button:active{
+button:active {
     transform: translateZ(5pt)
 }
-
 </style>
