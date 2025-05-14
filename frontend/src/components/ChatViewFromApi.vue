@@ -1,4 +1,5 @@
 <script async setup>
+import { API_URL } from '../global';
 import ChatView from './ChatView.vue';
 
 
@@ -8,7 +9,7 @@ defineProps({
 
 console.log("Starting to load chat from API...");
 
-const response = await fetch("http://127.0.0.1:2555/random_chat/");
+const response = await fetch(API_URL + "/random_chat/");
 const chat = await response.json();
 console.log("Successfully fetched chat from api")
 </script>

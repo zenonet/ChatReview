@@ -1,12 +1,14 @@
-use std::time::Duration;
+use std::{os::linux, time::Duration};
 
-use axum::{Router, extract::State, http::StatusCode, routing::get};
+use axum::{body::Body, extract::State, http::StatusCode, routing::{get, post}, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions, prelude::FromRow};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
+
+mod auth;
 
 #[derive(Serialize, Deserialize, FromRow)]
 struct ChatRow {
@@ -70,6 +72,8 @@ async fn main() {
         .route("/", get(|| async { "Hello world" }))
         .route("/chats/", get(get_chats) /* .post(create_task) */)
         .route("/random_chat/", get(get_random_chat))
+        .route("/register/", post(auth::register_handler))
+        .route("/login/", post(auth::login_handler))
         //.route("/tasks/:task_id", patch(update_task).delete(delete_task))
         .layer(
             CorsLayer::new()
@@ -146,7 +150,6 @@ async fn get_random_chat(
 
     Ok((
         StatusCode::OK,
-        //json!({"success": true, "data": rows}).to_string(),
         json!(chat).to_string(),
     ))
 }

@@ -3,6 +3,10 @@ export class Chat{
     name: String
     description: String
     messages: Message[]
+
+    constructor(){
+        this.messages = [];
+    }
 }
 
 export class Message{
