@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { API_URL, appState } from '../global';
+import router from '../routes';
 
 
 let chatName = ref("")
@@ -21,7 +22,14 @@ async function createChat(){
         })
     })
 
-    console.log(await res.text())
+    if(res.ok){
+        const chatId = await res.text();
+        router.replace("/edit/" + chatId);
+        return;
+    }else{
+        console.log("Creating chat failed")
+        //TODO: Show error message
+    }
 }
 
 </script>
