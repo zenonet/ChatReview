@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { reactive, Ref, ref } from 'vue';
 import { Chat, Message } from '../model/chat';
 import ChatView from './../components/ChatView.vue';
 import { API_URL, appState } from '../global';
@@ -7,20 +7,33 @@ import { useRoute } from 'vue-router';
 
 
 const props = defineProps({
-    chatId: String
+    chatId: String || null
 })
 
 const route = useRoute();
 
-let chat = new Chat();
-chat.id = props.chatId || route.params.id.toString();
+
 let chatViewKey = ref(0);
 let message = ref("");
+
+let chat = ref(null);
+
+const chatId = props.chatId || route.params.id.toString();
+async function loadChat() {
+    const response = await fetch(API_URL + "/chat/" + chatId,
+         {
+            headers: {
+                "Authorization": "Bearer " + appState.auth.accessToken()
+            }
+         }
+    );
+    chat.value = await response.json();
+}
 
 async function sendMessageClick(){
     let msg = new Message(message.value);
     msg.isOwn = true;
-    chat.messages.push(msg);
+    chat.value.messages.push(msg);
     chatViewKey.value += 1;
     message.value = "";
 
@@ -34,11 +47,13 @@ async function sendMessageClick(){
         body: JSON.stringify({
             "content": msg.content,
             "isOwn": msg.isOwn,
-            "chatId": chat.id,
-            "index": chat.messages.length-1
+            "chatId": chat.value.id,
+            "index": chat.value.messages.length-1
         })
     })
 }
+
+loadChat()
 
 </script>
 

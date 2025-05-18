@@ -2,18 +2,11 @@ use std::{os::linux, time::Duration};
 
 use auth::Claims;
 use axum::{
-    Json, Router,
-    body::Body,
-    extract::State,
-    handler::Layered,
-    http::StatusCode,
-    middleware::FromFnLayer,
-    response::IntoResponse,
-    routing::{Route, get, post},
+    extract::{Path, State}, http::StatusCode, routing::{get, post}, Json, Router
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::{PgPool, postgres::PgPoolOptions, prelude::FromRow};
+use sqlx::{postgres::PgPoolOptions, prelude::FromRow, PgPool};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
@@ -87,9 +80,10 @@ async fn main() {
     // compose the routes
     let app = Router::new()
         .route("/", get(|| async { "Hello world" }))
-        .route("/chats/", get(get_chats) /* .post(create_task) */)
+        .route("/mychats/", get(get_my_chats) /* .post(create_task) */)
         .route("/random_chat/", get(get_random_chat))
         .route("/message/", post(post_message))
+        .route("/chat/{chatId}", get(get_chat_by_id))
         .route("/chat/", post(create_chat))
         //.route_layer(auth_middleware)
         .route("/register/", post(auth::register_handler))
@@ -109,10 +103,11 @@ async fn main() {
         .expect("Error serving application");
 }
 
-async fn get_chats(
+async fn get_my_chats(
+    user: Claims,
     State(db_pool): State<PgPool>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let rows = sqlx::query_as!(ChatRow, "SELECT * FROM chats")
+    let rows = sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE owner_id=$1", user.id)
         .fetch_all(&db_pool)
         .await
         .map_err(|e| {
@@ -123,6 +118,29 @@ async fn get_chats(
         })?;
 
     Ok((StatusCode::OK, json!(rows).to_string()))
+}
+
+
+
+async fn get_messages_from_chat_id(id: Uuid, db_pool: &PgPool) -> Result<Vec<Message>, sqlx::error::Error>{
+    let message_rows = sqlx::query_as!(
+        MessageRow,
+        "SELECT id, content, chat_id, index, is_own FROM chat_messages WHERE chat_id=$1",
+        id
+    )
+    .fetch_all(db_pool)
+    .await?;
+
+    Ok(
+    message_rows
+            .into_iter()
+            .map(|row| Message {
+                content: row.content.unwrap(),
+                id: row.id,
+                is_own: row.is_own.unwrap_or_else(|| true),
+            })
+            .collect::<Vec<Message>>()
+    )
 }
 
 // TODO: Investigate how to return objects directly and let them be serialized by axum
@@ -151,37 +169,55 @@ async fn get_random_chat(
     // TODO: Maybe do a join here? Idk, that would mean that a lot of would have to be sent twice
 
     // Also fetch the messages of the chat
-    let message_rows = sqlx::query_as!(
-        MessageRow,
-        "SELECT id, content, chat_id, index, is_own FROM chat_messages WHERE chat_id=$1",
-        chat_row.id
-    )
-    .fetch_all(&db_pool)
-    .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            json!({"success": false, "message": e.to_string()}).to_string(),
-        )
-    })?;
+    let messages = get_messages_from_chat_id(chat_row.id, &db_pool).await.map_err(|e|{
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string()
+            )
+        })?;
 
     let chat = Chat {
         id: chat_row.id,
         name: chat_row.name.unwrap(),
         description: chat_row.description,
-        messages: message_rows
-            .into_iter()
-            .map(|row| Message {
-                content: row.content.unwrap(),
-                id: row.id,
-                is_own: row.is_own.unwrap_or_else(|| true),
-            })
-            .collect(),
+        messages,
     };
 
     Ok((StatusCode::OK, json!(chat).to_string()))
 }
 
+
+async fn get_chat_by_id(
+    user: Claims,
+    State(db_pool): State<PgPool>,
+    Path(chat_id): Path<Uuid>
+) -> Result<(StatusCode, String), (StatusCode, String)>{
+    let chat = sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE id=$1 AND owner_id=$2 LIMIT 1",
+        chat_id,
+        user.id
+    ).fetch_optional(&db_pool).await.map_err(|e|{
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
+
+    let Some(chat) = chat else {
+        return Err((StatusCode::BAD_REQUEST, String::from("A chat with the specified id could not be found")));
+    };
+
+    let messages = get_messages_from_chat_id(chat.id, &db_pool).await.map_err(|e|{
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
+
+
+    Ok((
+        StatusCode::OK,
+        json!(Chat{
+            id: chat_id,
+            name: chat.name.unwrap(),
+            description: chat.description,
+            messages
+        }).to_string()
+    ))
+}
 
 #[derive(Deserialize)]
 struct NewChat{
