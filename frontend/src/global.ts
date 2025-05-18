@@ -1,11 +1,12 @@
 import { reactive } from "vue";
 import AsyncChatViewFromApi from "./components/AsyncChatViewFromApi.vue";
+import { loadRouteLocation } from "vue-router";
 
 export const API_URL = "http://127.0.0.1:2555"; //TODO: make https
 
 export let appState = reactive({
     auth: {
-        async login(username: String, password: String):Promise<boolean> {
+        async login(username: String, password: String): Promise<boolean> {
             let res = await fetch(API_URL + "/login/", {
                 method: "POST",
                 body: JSON.stringify({
@@ -17,16 +18,17 @@ export let appState = reactive({
                 }
             })
 
-            switch(res.status){
+            switch (res.status) {
                 case 200:
-                    let content:any = await res.json();
+                    let content: any = await res.json();
                     console.log(content)
                     this._accessToken = content.token;
                     console.log("Logged in successfully!");
                     console.log(this._accessToken)
                     this.loggedIn = true;
                     this.error = null;
-                    localStorage.setItem("accessToken", this._accessToken)
+                    this.username = username;
+                    localStorage.setItem("auth", JSON.stringify(this))
                     return true;
                 case 401:
                     this.error = "Wrong username or password";
@@ -48,27 +50,37 @@ export let appState = reactive({
                 }
             });
 
-            if(res.status == 201){
-                const content:any = res.json();
+            if (res.status == 201) {
+                const content: any = res.json();
                 this._accessToken = content.token;
                 console.log("Registered successfully!");
-                localStorage.setItem("accessToken", this._accessToken)
                 this.loggedIn = true;
                 this.error = null;
+                this.username = username;
+                localStorage.setItem("auth", JSON.stringify(this))
             }
         },
         loggedIn: false,
         error: String = null,
         _accessToken: String = null,
+        username: String = null,
 
         accessToken() {
-            if(this._accessToken == null || this._accessToken == undefined){
-                this._accessToken = localStorage.getItem("accessToken");
-                if(this._accessToken != null){
+            if (this._accessToken == null || this._accessToken == undefined) {
+                this.loadFromLocalstorage();
+
+                if (this._accessToken != null) {
                     console.log("Loaded access token from localstorage")
                 }
             }
             return this._accessToken;
+        },
+        loadFromLocalstorage() {
+            // Insert all the values from localstorage into this
+            let betterThis = JSON.parse(localStorage.getItem("auth"));
+            for (const key in betterThis) {
+                this[key] = betterThis[key];
+            }
         }
     }
 });

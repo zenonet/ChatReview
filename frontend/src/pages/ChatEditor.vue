@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Chat, Message } from '../model/chat';
-import ChatView from './ChatView.vue';
+import ChatView from './../components/ChatView.vue';
 import { API_URL, appState } from '../global';
 import { useRoute } from 'vue-router';
 

@@ -35,7 +35,6 @@ chat.messages = messages;
   line-height: 1.1;
   text-align: center;
   flex-direction: column;
-  justify-content: center;
 }
 
 .content h1 {

@@ -10,6 +10,7 @@ const props = defineProps({
 </script>
 
 <template>
+    <h2>{{ chat.name }}</h2>
     <div class="msg-list">
         <ChatMessage v-for="msg in chat.messages" :message="msg">            
         </ChatMessage>
