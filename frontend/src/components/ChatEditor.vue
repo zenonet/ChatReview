@@ -3,14 +3,17 @@ import { ref } from 'vue';
 import { Chat, Message } from '../model/chat';
 import ChatView from './ChatView.vue';
 import { API_URL, appState } from '../global';
+import { useRoute } from 'vue-router';
 
 
 const props = defineProps({
     chatId: String
 })
 
+const route = useRoute();
+
 let chat = new Chat();
-chat.id = props.chatId;
+chat.id = props.chatId || route.params.id.toString();
 let chatViewKey = ref(0);
 let message = ref("");
 

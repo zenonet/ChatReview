@@ -7,7 +7,7 @@ import ChatCreator from "./components/ChatCreator.vue"
 const routes/* :RouteRecordRaw[] */ = [
     { path: "/", component: App },
     { path: "/login", component: LoginView },
-    { path: "/edit", component: ChatEditor },
+    { path: "/edit/:id", component: ChatEditor },
     { path: "/newchat", component: ChatCreator }
 ]
 
