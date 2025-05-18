@@ -1,6 +1,7 @@
 use std::{os::linux, time::Duration};
 
-use axum::{body::Body, extract::State, http::StatusCode, routing::{get, post}, Json, Router};
+use auth::Claims;
+use axum::{body::Body, extract::State, handler::Layered, http::StatusCode, middleware::FromFnLayer, response::IntoResponse, routing::{get, post, Route}, Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions, prelude::FromRow};
@@ -15,6 +16,7 @@ struct ChatRow {
     id: Uuid,
     name: Option<String>,
     description: Option<String>,
+    owner_id: Uuid,
 }
 
 
@@ -29,14 +31,19 @@ struct Chat {
 #[derive(Serialize, Deserialize, FromRow)]
 struct MessageRow {
     id: Uuid,
-    content: Option<String>,  
+    content: Option<String>,
+    
+    #[serde(rename = "isOwn")]
     is_own: Option<bool>,
 
+    #[serde(rename = "chatId")]
     chat_id: Option<Uuid>,
+    index: i32,
 }
 
 #[derive(Serialize)]
 struct Message{
+    #[serde(default)]
     id: Uuid,
     content: String,
     #[serde(rename = "isOwn")]
@@ -67,11 +74,15 @@ async fn main() {
 
     println!("listening on http://{}", listener.local_addr().unwrap());
 
+    //let auth_middleware = axum::middleware::from_fn(auth::auth_middleware);
+
     // compose the routes
     let app = Router::new()
         .route("/", get(|| async { "Hello world" }))
         .route("/chats/", get(get_chats) /* .post(create_task) */)
         .route("/random_chat/", get(get_random_chat))
+        .route("/message/", post(post_message))
+        //.route_layer(auth_middleware)
         .route("/register/", post(auth::register_handler))
         .route("/login/", post(auth::login_handler))
         //.route("/tasks/:task_id", patch(update_task).delete(delete_task))
@@ -106,6 +117,7 @@ async fn get_chats(
     Ok((StatusCode::OK, json!(rows).to_string()))
 }
 
+// TODO: Investigate how to return objects directly and let them be serialized by axum
 async fn get_random_chat(
     State(db_pool): State<PgPool>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
@@ -125,7 +137,7 @@ async fn get_random_chat(
     // TODO: Maybe do a join here? Idk, that would mean that a lot of would have to be sent twice
     
     // Also fetch the messages of the chat
-    let message_rows = sqlx::query_as!(MessageRow, "SELECT * FROM chat_messages WHERE chat_id=$1", chat_row.id)
+    let message_rows = sqlx::query_as!(MessageRow, "SELECT id, content, chat_id, index, is_own FROM chat_messages WHERE chat_id=$1", chat_row.id)
         .fetch_all(&db_pool)
         .await
         .map_err(|e|{
@@ -152,4 +164,35 @@ async fn get_random_chat(
         StatusCode::OK,
         json!(chat).to_string(),
     ))
+}
+
+async fn post_message(
+    user: Claims,
+    State(db_pool): State<PgPool>,
+    Json(mut message): Json<MessageRow>
+) -> Result<StatusCode, (StatusCode, String)>{
+
+    // Check if the specified chat belongs to the user
+    let _ = sqlx::query!("SELECT owner_Id FROM chats WHERE id=$1 AND owner_id=$2 LIMIT 1", message.chat_id.unwrap(), user.id)
+    .fetch_one(&db_pool).await.map_err(|_|{
+            (StatusCode::BAD_REQUEST, String::from("The chat doesn't exist or doesn't belong to you"))
+    })?;
+
+    // At this point, the query would've thrown an error if the chat doesn't exist or doesn't belong to the user
+
+    message.id = Uuid::new_v4();
+
+    let query = sqlx::query!("INSERT INTO chat_messages (id, content, chat_id, index, is_own) VALUES ($1,$2,$3,$4,$5)",
+        message.id,
+        message.content,
+        message.chat_id,
+        message.index,
+        message.is_own
+    );
+
+    if let Ok(_) = query.execute(&db_pool).await{
+        Ok(StatusCode::CREATED)
+    }else{
+        Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("creating message failed")))
+    }
 }

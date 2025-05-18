@@ -7,7 +7,6 @@ const props = defineProps({
     chat: { required: true, type: Chat}
 })
 
-console.log(props.chat)
 </script>
 
 <template>
@@ -18,7 +17,6 @@ console.log(props.chat)
 </template>
 
 <style scoped>
-
 
 .msg-list{
     display: flex;

@@ -1,0 +1,28 @@
+
+DROP TABLE chat_messages;
+DROP TABLE chats;
+DROP TABLE users;
+
+CREATE TABLE users(
+    id uuid PRIMARY KEY,
+    username varchar(128) NOT NULL UNIQUE,
+    password text NOT NULL,
+    registration_date TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE chats (
+    id uuid PRIMARY KEY,
+    name varchar(256),
+    description text,
+    owner_id uuid REFERENCES users(id) NOT NULL
+);
+
+CREATE TABLE chat_messages(
+    id uuid PRIMARY KEY,
+    content text NOT NULL,
+    chat_id uuid REFERENCES chats(id) NOT NULL,
+    is_own boolean NOT NULL,
+    index int NOT NULL
+);
+
+
