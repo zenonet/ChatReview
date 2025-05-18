@@ -217,15 +217,26 @@ async fn create_chat(
     }
 }
 
+
+#[derive(Deserialize)]
+struct NewMessage{
+    #[serde(alias = "chatId")]
+    chat_id: Uuid,
+    content: String,
+    #[serde(alias = "isOwn")]
+    is_own: bool,
+    index: i32
+}
+
 async fn post_message(
     user: Claims,
     State(db_pool): State<PgPool>,
-    Json(mut message): Json<MessageRow>,
+    Json(mut message): Json<NewMessage>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     // Check if the specified chat belongs to the user
     let _ = sqlx::query!(
         "SELECT owner_Id FROM chats WHERE id=$1 AND owner_id=$2 LIMIT 1",
-        message.chat_id.unwrap(),
+        message.chat_id,
         user.id
     )
     .fetch_one(&db_pool)
@@ -239,11 +250,11 @@ async fn post_message(
 
     // At this point, the query would've thrown an error if the chat doesn't exist or doesn't belong to the user
 
-    message.id = Uuid::new_v4();
+    let message_id = Uuid::new_v4();
 
     let query = sqlx::query!(
         "INSERT INTO chat_messages (id, content, chat_id, index, is_own) VALUES ($1,$2,$3,$4,$5)",
-        message.id,
+        message_id,
         message.content,
         message.chat_id,
         message.index,
