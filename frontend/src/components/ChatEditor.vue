@@ -25,7 +25,7 @@ async function sendMessageClick(){
     fetch(API_URL + "/message/", {
         method: "POST",
         headers: {
-            "Authorization": "Bearer " + appState.auth.accessToken,
+            "Authorization": "Bearer " + appState.auth.accessToken(),
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
