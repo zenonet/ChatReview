@@ -1,7 +1,16 @@
 use std::{os::linux, time::Duration};
 
 use auth::Claims;
-use axum::{body::Body, extract::State, handler::Layered, http::StatusCode, middleware::FromFnLayer, response::IntoResponse, routing::{get, post, Route}, Json, Router};
+use axum::{
+    Json, Router,
+    body::Body,
+    extract::State,
+    handler::Layered,
+    http::StatusCode,
+    middleware::FromFnLayer,
+    response::IntoResponse,
+    routing::{Route, get, post},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{PgPool, postgres::PgPoolOptions, prelude::FromRow};
@@ -19,20 +28,19 @@ struct ChatRow {
     owner_id: Uuid,
 }
 
-
 #[derive(Serialize)]
 struct Chat {
     id: Uuid,
     name: String,
     description: Option<String>,
-    messages: Vec<Message>
+    messages: Vec<Message>,
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
 struct MessageRow {
     id: Uuid,
     content: Option<String>,
-    
+
     #[serde(rename = "isOwn")]
     is_own: Option<bool>,
 
@@ -42,7 +50,7 @@ struct MessageRow {
 }
 
 #[derive(Serialize)]
-struct Message{
+struct Message {
     #[serde(default)]
     id: Uuid,
     content: String,
@@ -82,6 +90,7 @@ async fn main() {
         .route("/chats/", get(get_chats) /* .post(create_task) */)
         .route("/random_chat/", get(get_random_chat))
         .route("/message/", post(post_message))
+        .route("/chat/", post(create_chat))
         //.route_layer(auth_middleware)
         .route("/register/", post(auth::register_handler))
         .route("/login/", post(auth::login_handler))
@@ -90,10 +99,9 @@ async fn main() {
             CorsLayer::new()
                 .allow_origin(Any)
                 .allow_methods(Any) // TODO
-                .allow_headers(Any)
+                .allow_headers(Any),
         )
         .with_state(db_pool);
-
 
     //serve the application
     axum::serve(listener, app)
@@ -131,58 +139,110 @@ async fn get_random_chat(
             )
         })?
         .into_iter()
-        .next()
-        .unwrap();
+        .next();
+
+    let Some(chat_row) = chat_row else {
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("No chat available"),
+        ));
+    };
 
     // TODO: Maybe do a join here? Idk, that would mean that a lot of would have to be sent twice
-    
-    // Also fetch the messages of the chat
-    let message_rows = sqlx::query_as!(MessageRow, "SELECT id, content, chat_id, index, is_own FROM chat_messages WHERE chat_id=$1", chat_row.id)
-        .fetch_all(&db_pool)
-        .await
-        .map_err(|e|{
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({"success": false, "message": e.to_string()}).to_string()
-            )
-        })?;
 
-    let chat = Chat{
+    // Also fetch the messages of the chat
+    let message_rows = sqlx::query_as!(
+        MessageRow,
+        "SELECT id, content, chat_id, index, is_own FROM chat_messages WHERE chat_id=$1",
+        chat_row.id
+    )
+    .fetch_all(&db_pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"success": false, "message": e.to_string()}).to_string(),
+        )
+    })?;
+
+    let chat = Chat {
         id: chat_row.id,
         name: chat_row.name.unwrap(),
         description: chat_row.description,
-        messages: message_rows.into_iter().map(|row|{
-            Message{
+        messages: message_rows
+            .into_iter()
+            .map(|row| Message {
                 content: row.content.unwrap(),
                 id: row.id,
-                is_own: row.is_own.unwrap_or_else(||{true})
-            }
-        }).collect()
+                is_own: row.is_own.unwrap_or_else(|| true),
+            })
+            .collect(),
     };
 
-    Ok((
-        StatusCode::OK,
-        json!(chat).to_string(),
-    ))
+    Ok((StatusCode::OK, json!(chat).to_string()))
+}
+
+
+#[derive(Deserialize)]
+struct NewChat{
+    name:String,
+    description: Option<String>,
+}
+
+async fn create_chat(
+    user: Claims,
+    State(db_pool): State<PgPool>,
+    Json(chat): Json<NewChat>,
+) -> Result<(StatusCode, String), (StatusCode, String)> {
+
+    let chat_id = Uuid::new_v4();
+
+    if sqlx::query!(
+        "INSERT INTO chats (id, name, description, owner_id) VALUES ($1,$2,$3,$4)",
+        chat_id,
+        chat.name,
+        chat.description,
+        user.id
+    )
+    .execute(&db_pool)
+    .await
+    .is_ok()
+    {
+        Ok((StatusCode::CREATED, chat_id.to_string()))
+    } else {
+        Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Failed to create chat"),
+        ))
+    }
 }
 
 async fn post_message(
     user: Claims,
     State(db_pool): State<PgPool>,
-    Json(mut message): Json<MessageRow>
-) -> Result<StatusCode, (StatusCode, String)>{
-
+    Json(mut message): Json<MessageRow>,
+) -> Result<StatusCode, (StatusCode, String)> {
     // Check if the specified chat belongs to the user
-    let _ = sqlx::query!("SELECT owner_Id FROM chats WHERE id=$1 AND owner_id=$2 LIMIT 1", message.chat_id.unwrap(), user.id)
-    .fetch_one(&db_pool).await.map_err(|_|{
-            (StatusCode::BAD_REQUEST, String::from("The chat doesn't exist or doesn't belong to you"))
+    let _ = sqlx::query!(
+        "SELECT owner_Id FROM chats WHERE id=$1 AND owner_id=$2 LIMIT 1",
+        message.chat_id.unwrap(),
+        user.id
+    )
+    .fetch_one(&db_pool)
+    .await
+    .map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            String::from("The chat doesn't exist or doesn't belong to you"),
+        )
     })?;
 
     // At this point, the query would've thrown an error if the chat doesn't exist or doesn't belong to the user
 
     message.id = Uuid::new_v4();
 
-    let query = sqlx::query!("INSERT INTO chat_messages (id, content, chat_id, index, is_own) VALUES ($1,$2,$3,$4,$5)",
+    let query = sqlx::query!(
+        "INSERT INTO chat_messages (id, content, chat_id, index, is_own) VALUES ($1,$2,$3,$4,$5)",
         message.id,
         message.content,
         message.chat_id,
@@ -190,9 +250,12 @@ async fn post_message(
         message.is_own
     );
 
-    if let Ok(_) = query.execute(&db_pool).await{
+    if let Ok(_) = query.execute(&db_pool).await {
         Ok(StatusCode::CREATED)
-    }else{
-        Err((StatusCode::INTERNAL_SERVER_ERROR, String::from("creating message failed")))
+    } else {
+        Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("creating message failed"),
+        ))
     }
 }
