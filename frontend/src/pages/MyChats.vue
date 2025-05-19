@@ -29,6 +29,7 @@ async function createChatClicked() {
             <button v-on:click="createChatClicked">New Chat</button>
         </div>
         <div class="list">
+            <h2>Your chats:</h2>
             <div v-for="chat in chats">
                 <RouterLink :to="'/edit/' + chat.id" v-text="chat.name" />
             </div>
@@ -48,14 +49,20 @@ async function createChatClicked() {
 }
 
 .list {
+    margin-left: auto;
+    margin-right: auto;
     display: flex;
     flex-direction: column;
     gap: 25px;
+    text-align: left;
 }
 
 a {
     color: white;
-    font-size: 2em;
+    font-size: 1.5em;
     text-decoration: none;
+}
+a:hover{
+    text-decoration: underline;
 }
 </style>
