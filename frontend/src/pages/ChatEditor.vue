@@ -15,6 +15,7 @@ const route = useRoute();
 
 let chatViewKey = ref(0);
 let message = ref("");
+let isOwn = ref(true);
 
 let chat = ref(null);
 
@@ -32,7 +33,7 @@ async function loadChat() {
 
 async function sendMessageClick(){
     let msg = new Message(message.value);
-    msg.isOwn = true;
+    msg.isOwn = isOwn.value;
     chat.value.messages.push(msg);
     chatViewKey.value += 1;
     message.value = "";
@@ -62,6 +63,8 @@ loadChat()
         <ChatView :key="chatViewKey" :chat="chat" />
         <div style="display: flex; gap: 15px">
             <input class="chat-input" style="flex: 1" placeholder="Type a message here..." v-model="message" v-on:keyup.enter="sendMessageClick"/>
+            <label>yours?</label>
+            <input type="checkbox" v-model="isOwn">
             <button v-on:click="sendMessageClick">Send</button>
         </div>
     </div>
