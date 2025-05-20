@@ -39,7 +39,7 @@ async function sendMessageClick(){
     message.value = "";
 
     // Actually send the message
-    fetch(API_URL + "/message/", {
+    const resp = await fetch(API_URL + "/message/", {
         method: "POST",
         headers: {
             "Authorization": "Bearer " + appState.auth.accessToken(),
@@ -51,7 +51,11 @@ async function sendMessageClick(){
             "chatId": chat.value.id,
             "index": chat.value.messages.length-1
         })
-    })
+    });
+
+    resp.maybeRedirectToLogin()
+
+    // TODO: Show error message here
 }
 
 loadChat()

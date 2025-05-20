@@ -12,6 +12,8 @@ async function loadChats() {
         }
     });
 
+    res.maybeRedirectToLogin()
+
     return await res.json();
 }
 

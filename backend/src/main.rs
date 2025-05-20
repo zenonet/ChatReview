@@ -29,7 +29,7 @@ struct Chat {
     messages: Vec<Message>,
 }
 
-#[derive(Serialize, Deserialize, FromRow)]
+#[derive(Serialize, Deserialize, FromRow, Debug)]
 struct MessageRow {
     id: Uuid,
     content: Option<String>,
@@ -40,6 +40,8 @@ struct MessageRow {
     #[serde(rename = "chatId")]
     chat_id: Option<Uuid>,
     index: i32,
+
+    avg_rating: Option<f64>
 }
 
 #[derive(Serialize)]
@@ -49,6 +51,8 @@ struct Message {
     content: String,
     #[serde(rename = "isOwn")]
     is_own: bool,
+
+    avg_rating: f64
 }
 
 #[tokio::main]
@@ -83,6 +87,7 @@ async fn main() {
         .route("/mychats/", get(get_my_chats) /* .post(create_task) */)
         .route("/random_chat/", get(get_random_chat))
         .route("/message/", post(post_message))
+        .route("/rating/", post(post_rating))
         .route("/chat/{chatId}", get(get_chat_by_id))
         .route("/chat/", post(create_chat))
         //.route_layer(auth_middleware)
@@ -121,11 +126,52 @@ async fn get_my_chats(
 }
 
 
+#[derive(Deserialize)]
+struct NewRating{
+    value: f64,
+    #[serde(alias = "messageId")]
+    message_id: Uuid
+}
+
+async fn post_rating(
+    user: Claims,
+    State(db_pool): State<PgPool>,
+    Json(rating): Json<NewRating>
+) -> Result<StatusCode, (StatusCode, String)>{
+    sqlx::query!("INSERT INTO message_ratings (message_id, owner_id, value, changed) VALUES ($1,$2,$3,$4) ON CONFLICT (message_id,owner_id) DO UPDATE SET value = $3, changed = $4",
+        rating.message_id,
+        user.id,
+        rating.value,
+        chrono::Utc::now()
+    ).execute(&db_pool).await.map_err(|e|{
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string()
+        )
+    })?;
+
+    Ok(StatusCode::CREATED)
+}
+
 
 async fn get_messages_from_chat_id(id: Uuid, db_pool: &PgPool) -> Result<Vec<Message>, sqlx::error::Error>{
     let message_rows = sqlx::query_as!(
         MessageRow,
-        "SELECT id, content, chat_id, index, is_own FROM chat_messages WHERE chat_id=$1",
+        r#"
+SELECT
+    m.id,
+    m.content,
+    m.chat_id,
+    m.index,
+    m.is_own,
+    AVG(r.value) AS avg_rating
+FROM
+    chat_messages m
+LEFT JOIN
+    message_ratings r ON m.id = r.message_id
+WHERE m.chat_id = $1
+GROUP BY
+    m.id"#,
         id
     )
     .fetch_all(db_pool)
@@ -138,6 +184,7 @@ async fn get_messages_from_chat_id(id: Uuid, db_pool: &PgPool) -> Result<Vec<Mes
                 content: row.content.unwrap(),
                 id: row.id,
                 is_own: row.is_own.unwrap_or_else(|| true),
+                avg_rating: row.avg_rating.unwrap_or(0f64)
             })
             .collect::<Vec<Message>>()
     )

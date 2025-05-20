@@ -1,4 +1,5 @@
 
+DROP TABLE message_ratings;
 DROP TABLE chat_messages;
 DROP TABLE chats;
 DROP TABLE users;
@@ -25,4 +26,10 @@ CREATE TABLE chat_messages(
     index int NOT NULL
 );
 
-
+CREATE TABLE message_ratings(
+    message_id uuid REFERENCES chat_messages(id) NOT NULL,
+    owner_id uuid REFERENCES users(id) NOT NULL,
+    value float NOT NULL,
+    changed TIMESTAMPTZ NOT NULL,
+    UNIQUE (message_id, owner_id)
+)

@@ -1,8 +1,9 @@
 import { reactive } from "vue";
 import AsyncChatViewFromApi from "./components/AsyncChatViewFromApi.vue";
 import { loadRouteLocation } from "vue-router";
+import router from "./routes";
 
-export const API_URL = "http://127.0.0.1:2555"; //TODO: make https
+export const API_URL = "http://192.168.1.200:2555"; //TODO: make https
 
 export let appState = reactive({
     auth: {
@@ -25,7 +26,7 @@ export let appState = reactive({
                     this._accessToken = content.token;
                     console.log("Logged in successfully!");
                     console.log(this._accessToken)
-                    this.loggedIn = true;
+                    this._loggedIn = true;
                     this.error = null;
                     this.username = username;
                     localStorage.setItem("auth", JSON.stringify(this))
@@ -54,13 +55,18 @@ export let appState = reactive({
                 const content: any = res.json();
                 this._accessToken = content.token;
                 console.log("Registered successfully!");
-                this.loggedIn = true;
+                this._loggedIn = true;
                 this.error = null;
                 this.username = username;
                 localStorage.setItem("auth", JSON.stringify(this))
             }
         },
-        loggedIn: false,
+
+        loggedIn() {
+            if(!this._loggedIn) this.loadFromLocalstorage();
+            return this._loggedIn;
+        },
+        _loggedIn: false,
         error: String = null,
         _accessToken: String = null,
         username: String = null,
@@ -84,3 +90,19 @@ export let appState = reactive({
         }
     }
 });
+
+declare global {
+  interface Response {
+    /**
+    Redirect to the login page if the request is unauthorized
+    */
+    maybeRedirectToLogin(): Response;
+  }
+}
+
+Response.prototype.maybeRedirectToLogin = function(){
+    if(this.status == 401){
+        router.push("/login")
+    }
+    return this;
+}

@@ -26,6 +26,7 @@ const props = defineProps({
     margin-left: auto;
     margin-right: auto;
     min-width: 50vw;
+    gap: 10px
 }
 
 </style>

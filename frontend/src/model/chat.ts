@@ -13,6 +13,7 @@ export class Message{
     id: String
     content:String
     isOwn: Boolean
+    avg_rating: Number
 
     constructor(msg:String){
         this.content = msg

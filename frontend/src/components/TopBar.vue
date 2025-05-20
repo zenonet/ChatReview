@@ -5,7 +5,7 @@ import { appState } from '../global';
 
 let loginText = computed(() => {
     appState.auth.loadFromLocalstorage();
-    if (appState.auth.loggedIn) {
+    if (appState.auth.loggedIn()) {
         return appState.auth.username;
     }
     else {
@@ -14,7 +14,7 @@ let loginText = computed(() => {
 });
 
 let loginClickPath = computed(() => {
-    if(appState.auth.loggedIn){
+    if(appState.auth.loggedIn()){
         return "/profile";
     }else {
         return "/login";
