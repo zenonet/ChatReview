@@ -63,7 +63,6 @@ type Rejection = (StatusCode, String);
             ){
                 return Ok(token_data.claims)
             }
-            println!("Token couldn't be decoded")
         }
         return Err((
             StatusCode::UNAUTHORIZED,
@@ -181,31 +180,4 @@ fn generate_jwt(user: UserRow) -> Result<String, jsonwebtoken::errors::Error>{
         },
         &EncodingKey::from_base64_secret(&std::env::var("JWT_SECRET").unwrap()).unwrap()
     )
-}
-pub async fn auth_middleware(
-    mut request: axum::extract::Request,
-    next: Next
-) -> Result<Response, (StatusCode, String)>{
-    if let Some(token) = request.headers().get("Authorization") {
-        let token = token.to_str().unwrap();
-        if !token.starts_with("Bearer "){
-            return Err((
-                StatusCode::UNAUTHORIZED,
-                String::from("The provided token was in the wrong format")
-            ));
-        }
-        let token: &str = &token[7..];
-        if let Ok(token_data) = jsonwebtoken::decode::<Claims>(token,
-             &DecodingKey::from_base64_secret(&std::env::var("JWT_SECRET").unwrap()).unwrap(),
-             &Validation::default()){
-            request.extensions_mut().insert(token_data.claims);
-            return Ok(next.run(request).await)
-        }
-        println!("Token couldn't be decoded")
-    }
-
-    Err((
-        StatusCode::UNAUTHORIZED,
-        String::from("No valid authorization header was provided")
-    ))
 }
