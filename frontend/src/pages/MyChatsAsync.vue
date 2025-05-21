@@ -6,10 +6,12 @@ import MyChats from './MyChats.vue';
 
 <template>
     <Suspense>
-        <MyChats></MyChats>
+        <MyChats />
         <template #fallback>
-            <div style="min-height: 100vh;"></div>
-            <h3>Loading chats</h3>
+            <div>
+                <div style="min-height: 100vh;"></div>
+                <h3>Loading chats</h3>
+            </div>
         </template>
     </Suspense>
 </template>
