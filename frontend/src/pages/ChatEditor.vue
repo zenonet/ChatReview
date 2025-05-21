@@ -6,20 +6,20 @@ import { API_URL, appState } from '../global';
 import { useRoute } from 'vue-router';
 
 
-const props = defineProps({
+/* const props = defineProps({
     chatId: String || null
-})
+}) */
 
 const route = useRoute();
 
 
 let chatViewKey = ref(0);
 let message = ref("");
-let isOwn = ref(false);
+let isOwn = ref(true);
 
 let chat = ref(null);
 
-const chatId = props.chatId || route.params.id.toString();
+const chatId = route.params.id.toString();
 console.log(chatId)
 async function loadChat() {
     const response = await fetch(API_URL + "/chat/" + chatId,
@@ -32,14 +32,8 @@ async function loadChat() {
     chat.value = await response.json();
 }
 
-async function sendMessageClick() {
-    let msg = new Message(message.value);
-    msg.isOwn = isOwn.value;
-    chat.value.messages.push(msg);
-    chatViewKey.value += 1;
-    message.value = "";
 
-    // Actually send the message
+async function sendMessage(msg: Message){
     const resp = await fetch(API_URL + "/message/", {
         method: "POST",
         headers: {
@@ -55,10 +49,27 @@ async function sendMessageClick() {
     });
 
     resp.maybeRedirectToLogin()
-
-    // TODO: Show error message here
 }
 
+function sendMessageClick() {
+    let msg = new Message(message.value);
+    msg.avg_rating = 0;
+    msg.isOwn = isOwn.value;
+    chat.value.messages.push(msg);
+    chatViewKey.value = chatViewKey.value + 1;
+
+
+    // Actually send the message
+
+    // TODO: Show error message here
+
+    message.value = "";
+
+    console.log("Added message to chat view!")
+    console.log(message.value)
+
+    sendMessage(msg)
+}
 loadChat()
 
 </script>
@@ -69,7 +80,7 @@ loadChat()
         <div style="display: flex; gap: 15px">
             <input class="chat-input" style="flex: 1" placeholder="Type a message here..." v-model="message"
                 v-on:keyup.enter="sendMessageClick" />
-            <label class="switch">
+             <label class="switch">
                 <input type="checkbox" v-model="isOwn">
                 <span class="slider"></span>
             </label>
