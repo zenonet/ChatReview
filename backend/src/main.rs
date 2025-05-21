@@ -170,8 +170,8 @@ FROM
 LEFT JOIN
     message_ratings r ON m.id = r.message_id
 WHERE m.chat_id = $1
-GROUP BY
-    m.id"#,
+GROUP BY m.id
+ORDER BY m.index"#,
         id
     )
     .fetch_all(db_pool)
