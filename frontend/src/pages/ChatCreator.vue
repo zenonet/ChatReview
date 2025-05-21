@@ -21,6 +21,7 @@ async function createChat(){
             name: chatName.value,
         })
     })
+    res.maybeRedirectToLogin();
 
     if(res.ok){
         const chatId = await res.text();
@@ -35,13 +36,20 @@ async function createChat(){
 </script>
 
 <template>
-    <div class="outer">
+    <div class="page">
         <div class="form-container">
+            <h2>Create a new chat</h2>
+            <p>
+                Here you can create a new chat. After creating it,
+                you can recreate the dialogue you've had and others can peer-review it.
+            </p>
             <div class="field-container">
                 <label>Chat Name</label>
                 <input v-model="chatName" maxlength="128" />
             </div>
-            <button v-on:click="createChat">Create</button>
+            <div>
+                <button v-on:click="createChat">Create</button>
+            </div>
 
         </div>
     </div>
@@ -49,15 +57,6 @@ async function createChat(){
 
 
 <style scoped>
-.outer {
-    font-size: large;
-    min-width: 95vw;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-top: 5vw;
-}
 
 .form-container {
     width: fit-content;
@@ -65,11 +64,19 @@ async function createChat(){
     flex-direction: column;
     margin: auto;
     margin-top: 50pt;
-    gap: 15pt;
+    gap: 5pt;
+}
+
+h2{
+    margin: 0;
 }
 
 .field-container{
     display: flex;
     flex-direction: column;
+}
+
+button{
+    font-size: large;
 }
 </style>

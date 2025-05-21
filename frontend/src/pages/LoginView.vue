@@ -1,7 +1,10 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import { API_URL, appState } from '../global';
+import router from '@/routes';
+import { useRoute } from 'vue-router';
 
+const route = useRoute();
 
 let username = ref("");
 let password = ref("");
@@ -13,6 +16,16 @@ async function loginClick() {
         errorCounter.value++;
     }else{
         errorCounter.value = 0;
+        if(appState.redirectAfterLogin != null){
+            const redirect = appState.redirectAfterLogin;
+            console.log("Redirecting to " + redirect + " after login...")
+            appState.redirectAfterLogin = null;
+            router.replace({
+                path: redirect
+            })
+        }else{
+            router.replace("/")
+        }
     }
 }
 
@@ -29,8 +42,9 @@ let errorMsg = computed(() =>
 </script>
 
 <template>
-    <div class="outer">
+    <div class="page">
         <div class="login-container">
+            <h1>Login</h1>
             <div class="field-container">
                 <label>Username</label>
                 <input v-model="username" maxlength="128" />
@@ -45,11 +59,11 @@ let errorMsg = computed(() =>
                 {{ errorMsg }}
             </span>
 
-            <div style="display: flex">
+            <div class="button-row">
                 <button v-on:click="loginClick">
                     Login
                 </button>
-                <button v-on:click="registerClick">
+                <button class="secondary" v-on:click="registerClick">
                     Register
                 </button>
             </div>
@@ -72,30 +86,9 @@ let errorMsg = computed(() =>
     gap: 15pt;
 }
 
-.outer {
-    font-size: large;
-    min-width: 95vw;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-top: 5vw;
-}
-
-
 input {
     padding: 10pt;
     font-size: 1.5em;
 }
 
-button {
-    padding: 10pt;
-    background: white;
-    border: black 2px solid;
-    border-radius: 10%;
-}
-
-button:active {
-    transform: translateZ(5pt)
-}
 </style>

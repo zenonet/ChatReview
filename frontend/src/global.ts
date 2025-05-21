@@ -6,6 +6,7 @@ import router from "./routes";
 export const API_URL = "http://192.168.1.200:2555"; //TODO: make https
 
 export let appState = reactive({
+    redirectAfterLogin: String = null,
     auth: {
         async login(username: String, password: String): Promise<boolean> {
             let res = await fetch(API_URL + "/login/", {
@@ -29,7 +30,7 @@ export let appState = reactive({
                     this._loggedIn = true;
                     this.error = null;
                     this.username = username;
-                    localStorage.setItem("auth", JSON.stringify(this))
+                    this.saveToLocalstorage()
                     return true;
                 case 401:
                     this.error = "Wrong username or password";
@@ -58,12 +59,20 @@ export let appState = reactive({
                 this._loggedIn = true;
                 this.error = null;
                 this.username = username;
-                localStorage.setItem("auth", JSON.stringify(this))
+                this.saveToLocalstorage()
             }
         },
 
+        logout() {
+            this.username = null;
+            this._loggedIn = false;
+            this._accessToken = null;
+            this.saveToLocalstorage();
+            console.log("Logged out successfully!")
+        },
+
         loggedIn() {
-            if(!this._loggedIn) this.loadFromLocalstorage();
+            if (!this._loggedIn) this.loadFromLocalstorage();
             return this._loggedIn;
         },
         _loggedIn: false,
@@ -87,22 +96,36 @@ export let appState = reactive({
             for (const key in betterThis) {
                 this[key] = betterThis[key];
             }
+        },
+        saveToLocalstorage() {
+            localStorage.setItem("auth", JSON.stringify(this))
+        },
+
+        redirectIfNotLoggedIn() {
+            console.log(this.loggedIn)
+            if (!this.loggedIn()) {
+                //router.push("/login");
+            }
         }
     }
 });
 
 declare global {
-  interface Response {
-    /**
-    Redirect to the login page if the request is unauthorized
-    */
-    maybeRedirectToLogin(): Response;
-  }
+    interface Response {
+        /**
+        Redirect to the login page if the request is unauthorized
+        */
+        maybeRedirectToLogin(): Response;
+    }
 }
 
-Response.prototype.maybeRedirectToLogin = function(){
-    if(this.status == 401){
-        router.push("/login")
+Response.prototype.maybeRedirectToLogin = function () {
+    if (this.status == 401) {
+
+        appState.auth._loggedIn = false;
+        appState.auth.logout();
+        appState.redirectAfterLogin = router.currentRoute.value.fullPath;
+        router.push("/login");
     }
     return this;
 }

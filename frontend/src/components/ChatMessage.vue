@@ -69,15 +69,15 @@ async function clicked() {
 }
 
 .message {
-    background: lime;
+    background: var(--own-message-background);
     color: black;
     padding: 15pt;
 
     border-radius: 20px;
     font-size: 1.5em;
-    user-select: none;
     text-align: left;
     /* TOOD: Think about this, this might be a stupid idea */
+    user-select: none;
 }
 
 .others-message {
@@ -85,7 +85,7 @@ async function clicked() {
     border-bottom-left-radius: 0;
 }
 .others-message .message{
-    background: cyan;
+    background: var(--others-message-background);
 }
 
 .own-message {

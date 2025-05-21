@@ -7,14 +7,15 @@ import NotFound from "./NotFound.vue"
 import { compile } from "vue"
 import MyChats from "./pages/MyChats.vue"
 import MyChatsAsync from "./pages/MyChatsAsync.vue"
+import Profile from "./pages/Profile.vue"
 
 const routes: RouteRecordRaw[] = [
     { path: "/", component: App },
     { path: "/login", component: LoginView },
-    { path: "/edit/:id", component: ChatEditor },
+    { path: "/edit/:id", component: ChatEditor},
     { path: "/newchat", component: ChatCreator },
     { path: "/mychats", component: MyChatsAsync},
-
+    { path: "/profile", component: Profile },
 
     { path: "/:pathMatch(.*)*", component: NotFound }
 ]

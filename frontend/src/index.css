@@ -1,6 +1,86 @@
+* {
+    --primary: rgb(0, 191, 165);
+    --background: black;
+    --foreground: white;
+
+    --own-message-background: lime;
+    --others-message-background: cyan;
+}
+
+
 body {
-  margin: 0;
-  color: #fff;
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  background-image: linear-gradient(to bottom, #020917, #101725);
+    margin: 0;
+    color: var(--foreground);
+    font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+/*     background-image: linear-gradient(to bottom, #020917, #101725);
+    background-repeat: no-repeat; */
+    background-color: var(--background);
+}
+
+.page { 
+    font-size: large;
+    min-width: 95vw;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-top: 5vw;
+}
+
+
+.button-row{
+    display: flex;
+    flex-direction: row;
+    gap: 10pt;
+}
+
+p {
+    max-width: 20cm;
+}
+
+input{
+    font-size: large;
+    border: var(--primary) 2px solid;
+    background: var(--background);
+    color: var(--foreground);
+    padding: 5pt;
+    outline: none;
+    border-radius: 2pt;
+}
+
+input:focus{
+    filter: brightness(125%)
+}
+
+label{
+    font-size: 1.2em;
+}
+
+
+button{
+    background: var(--primary);
+    border-radius: 2pt;
+    padding: 5pt;
+    border: transparent 2px solid;
+    color: white;
+    font-weight: bold;
+    font-size: 1em;
+}
+
+button.secondary{
+    background: var(--background);
+    color: var(--primary);
+    border: var(--primary) 2px solid;
+}
+
+button:focus{
+    filter: brightness(125%)
+}
+
+a {
+    color: white;
+    text-decoration: none;
+}
+a:hover{
+    text-decoration: underline;
 }

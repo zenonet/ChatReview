@@ -2,7 +2,6 @@
 import { API_URL, appState } from '../global';
 import router from '../routes';
 
-
 let chats = await loadChats();
 console.log(chats)
 async function loadChats() {
@@ -25,8 +24,8 @@ async function createChatClicked() {
 
 <template>
 
-    <div class="outer">
-        <div style="display: flex">
+    <div class="page" style="justify-content: flex-start;">
+        <div style="display: flex; max-width: 80vw;">
             <div style="flex: 1"></div>
             <button v-on:click="createChatClicked">New Chat</button>
         </div>
@@ -41,14 +40,6 @@ async function createChatClicked() {
 </template>
 
 <style scoped>
-.outer {
-    text-align: center;
-    flex-direction: column;
-    min-height: 100vh;
-    line-height: 1.1;
-    display: flex;
-    padding: 25px
-}
 
 .list {
     margin-left: auto;
@@ -59,12 +50,4 @@ async function createChatClicked() {
     text-align: left;
 }
 
-a {
-    color: white;
-    font-size: 1.5em;
-    text-decoration: none;
-}
-a:hover{
-    text-decoration: underline;
-}
 </style>
