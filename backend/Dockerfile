@@ -4,7 +4,7 @@ WORKDIR /app
 COPY ./src ./src
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
-COPY ./.prod.env ./.env
+COPY ./.env.production ./.env
 
 RUN apk add openssl-dev musl-dev
 
