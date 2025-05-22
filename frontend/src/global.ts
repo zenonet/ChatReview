@@ -3,7 +3,7 @@ import AsyncChatViewFromApi from "./components/AsyncChatViewFromApi.vue";
 import { loadRouteLocation } from "vue-router";
 import router from "./routes";
 
-export const API_URL = "http://192.168.1.200:2555"; //TODO: make https
+export const API_URL = import.meta.env.PUBLIC_API_URL;
 
 export let appState = reactive({
     redirectAfterLogin: String = null,
