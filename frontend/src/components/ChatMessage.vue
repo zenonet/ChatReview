@@ -1,14 +1,48 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { API_URL, appState } from '../global';
 import { Message } from '../model/chat';
+import MessageActionPopup from './MessageActionPopup.vue';
 
 const props = defineProps({
-    message: { required: true, type: Message }
+    message: { required: true, type: Message },
+    selected: { default: false, type: Boolean }
 })
 
+if(props.selected){
+    console.log("I am selected!")
+}
+
+const emit = defineEmits<{
+    (e: "clicked")
+}>();
+
+let showMenu = ref(false);
+
+
+async function postRating(value: Number){
+    let rating = {
+        messageId: props.message.id,
+        value
+    };
+    let res = await fetch(API_URL + "/rating/", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + appState.auth.accessToken(),
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(rating)
+    });
+    res.maybeRedirectToLogin()
+    if(res.ok){
+        console.log("Rating posted successfully!")
+    }
+}
 
 async function clicked() {
-    // TODO: Replace all popup stuff with nice UI
+    //showMenu.value = !showMenu.value;
+    //console.log("Showing menu!")
+/*     // TODO: Replace all popup stuff with nice UI
     console.log(appState.auth)
     if (!appState.auth.loggedIn()) {
         alert("Login to rate messages");
@@ -28,20 +62,13 @@ async function clicked() {
     };
 
     // Post rating
-    let res = await fetch(API_URL + "/rating/", {
-        method: "POST",
-        headers: {
-            "Authorization": "Bearer " + appState.auth.accessToken(),
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(rating)
-    });
+    
 
     if (res.ok) {
         alert("Rating accepted")
     } else {
         alert("An error occured")
-    }
+    } */
 }
 
 </script>
@@ -51,10 +78,11 @@ async function clicked() {
 <template>
     <div class="layout-container" :class="{ 'own-message': message.isOwn, 'others-message': !message.isOwn }">
         <div class="rating-indicator">{{ message.avg_rating.toString() }}</div>
-        <div class="message" v-on:mousedown="clicked">
+        <div class="message" v-on:mousedown="$emit('clicked')">
             <p style="margin: 0;">
                 {{ message.content }}
             </p>
+            <MessageActionPopup @post-rating="postRating"/>
         </div>
     </div>
 </template>
@@ -78,6 +106,8 @@ async function clicked() {
     text-align: left;
     /* TOOD: Think about this, this might be a stupid idea */
     user-select: none;
+
+    position: relative;
 }
 
 .others-message {
@@ -86,10 +116,15 @@ async function clicked() {
 }
 .others-message .message{
     background: var(--others-message-background);
+    border-bottom-left-radius: 0;
 }
 
 .own-message {
     align-self: flex-end;
+    border-bottom-right-radius: 0;
+}
+
+.own-message .message{
     border-bottom-right-radius: 0;
 }
 
