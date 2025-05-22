@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { appState } from '@/global';
+import { API_URL, appState } from '@/global';
 import router from '@/routes';
 import { RouterLink } from 'vue-router';
 
@@ -11,10 +11,25 @@ function onLogoutClicked(){
     router.replace("/login")
 }
 
-function onDeleteAccountClicked(){
+async function onDeleteAccountClicked(){
     let resp = prompt("Are you sure that you want to delete your account?\nIf you really want to delete your account type in DELETE into the field:");
     if(resp === "DELETE"){
-        console.log("Cannot delete profile! (Not implemented yet)")
+        const res = await fetch(API_URL + "/profile/", {
+            method: "DELETE",
+            headers: {
+                "Authorization": "Bearer " + appState.auth.accessToken()
+            }
+        });
+
+        if(res.ok){
+            alert("Account deleted successfully. Are you happy now?")
+            appState.auth.logout();
+            router.replace("/login")
+        }else{
+            alert("ooops, failed to delete account. Too bad.\nfr though: Contact me pls so I can fix this")
+        }
+    }else{
+        alert("Nope, ain't gonna happen as long as you can't spell")
     }
 }
 
