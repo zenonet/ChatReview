@@ -6,18 +6,12 @@ import MessageActionPopup from './MessageActionPopup.vue';
 
 const props = defineProps({
     message: { required: true, type: Message },
-    selected: { default: false, type: Boolean }
 })
 
-if(props.selected){
-    console.log("I am selected!")
-}
 
 const emit = defineEmits<{
     (e: "clicked")
 }>();
-
-let showMenu = ref(false);
 
 
 async function postRating(value: Number){
@@ -82,7 +76,6 @@ async function clicked() {
             <p style="margin: 0;">
                 {{ message.content }}
             </p>
-            <MessageActionPopup @post-rating="postRating"/>
         </div>
     </div>
 </template>

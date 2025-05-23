@@ -1,25 +1,32 @@
-
-<script setup>
-import { Chat } from '../model/chat';
-import ChatMessage from './ChatMessage.vue'
+<script setup lang="ts">
+import { Chat, Message } from '../model/chat';
+import ChatMessage from './ChatMessage.vue';
 
 const props = defineProps({
-    chat: { required: true, type: Chat}
+    chat: { default: null, type: Chat }
 })
+
+const emit = defineEmits<{
+    (e: "messageClicked", message: Message)
+}>();
 
 </script>
 
 <template>
-    <h2 style="text-align: center;">{{ chat.name }}</h2>
-    <div class="msg-list">
-        <ChatMessage v-for="msg in chat.messages" :message="msg">            
-        </ChatMessage>
-    </div>    
+    <div v-if="chat">
+        <h2 style="text-align: center;">{{ chat?.name }}</h2>
+        <div class="msg-list">
+            <ChatMessage v-for="msg of chat?.messages" :message="msg" @clicked="emit('messageClicked', msg)">
+            </ChatMessage>
+        </div>
+    </div>
+    <div v-else>
+        <h1>Chat hasn't loaded yet</h1>
+    </div>
 </template>
 
 <style scoped>
-
-.msg-list{
+.msg-list {
     display: flex;
     flex-direction: column;
     max-width: 80vw;
@@ -28,5 +35,4 @@ const props = defineProps({
     min-width: 50vw;
     gap: 10px
 }
-
 </style>

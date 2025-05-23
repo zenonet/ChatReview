@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router"
+import { createRouter, createWebHashHistory, createWebHistory, RouteRecordRaw } from "vue-router"
 import App from "./App.vue"
 import LoginView from "./pages/LoginView.vue"
 import ChatEditor from "./pages/ChatEditor.vue"
@@ -8,6 +8,7 @@ import { compile } from "vue"
 import MyChats from "./pages/MyChats.vue"
 import MyChatsAsync from "./pages/MyChatsAsync.vue"
 import Profile from "./pages/Profile.vue"
+import NewLayout from "./pages/NewLayout.vue"
 
 const routes: RouteRecordRaw[] = [
     { path: "/", component: App },
@@ -17,11 +18,13 @@ const routes: RouteRecordRaw[] = [
     { path: "/mychats", component: MyChatsAsync},
     { path: "/profile", component: Profile },
 
+    { path: "/newlayout", component: NewLayout },
+
     { path: "/:pathMatch(.*)*", component: NotFound }
 ]
 
 const router = createRouter({
-    history:  createWebHistory(),
+    history:  createWebHashHistory(),
     routes,
 })
 
