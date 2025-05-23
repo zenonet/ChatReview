@@ -12,6 +12,8 @@ const props = defineProps({
 let ratingInputVal: Ref<Number> = ref(0);
 
 async function submitRating(){
+    appState.auth.redirectIfNotLoggedIn();
+
     let rating = {
         messageId: props.message.id,
         value: ratingInputVal.value
@@ -32,6 +34,30 @@ async function submitRating(){
     }
 }
 
+const commentVal: Ref<string> = ref("");
+async function postComment(){
+    appState.auth.redirectIfNotLoggedIn();
+
+    const comment = {
+        messageId: props.message.id,
+        content: commentVal.value
+    };
+
+    const res = await fetch(API_URL + "/comment/", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + appState.auth.accessToken(),
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(comment),
+    })
+    res.maybeRedirectToLogin()
+
+    if(res.ok){
+        console.log("Comment posted successfully!")
+    }
+}
+
 let avgRating = computed(() => (props.message.avg_rating || 0).toString())
 </script>
 
@@ -43,15 +69,32 @@ let avgRating = computed(() => (props.message.avg_rating || 0).toString())
             <h3>Rating</h3>
             <span>Average rating: {{ avgRating }}</span>
 
-            <div style="padding: 5pt">
+            <div class="container">
                 <h4>Your rating:</h4>
-                <input type="number" v-model="ratingInputVal"></input>
+                <input type="number" v-model="ratingInputVal">
                 <button v-on:click="submitRating">Submit</button>
             </div>
         </div>
         <div id="comments">
             <h3>Comments</h3>
+            <div class="container">
+                <h4>Your comment:</h4>
+                <textarea placeholder="What do you think of this?" v-model="commentVal"/>
+                <button v-on:click="postComment">Submit</button>
+            </div>
         </div>
     </div>
     <div v-else>No message selected</div>
 </template>
+
+<style scoped>
+textarea{
+    background-color: var(--background);
+    color: var(--foreground);
+    border: none;
+    font-size: 1.2em;
+    height: 2lh;
+    padding: 5px;
+    margin: 5px;
+}
+</style>

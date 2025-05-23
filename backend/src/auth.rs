@@ -1,16 +1,12 @@
-use axum::body::Body;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use axum::http::Request;
-use axum::middleware::Next;
-use axum::response::Response;
-use chrono::{DateTime, Duration, TimeDelta};
+use chrono::Duration;
 use axum::{extract::State, http::StatusCode};
-use axum::{extract, Json};
+use axum::Json;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::{PgPool, Type};
+use sqlx::PgPool;
 
 use argon2::{
     password_hash::{
@@ -46,7 +42,8 @@ where S: Send + Sync{
 type Rejection = (StatusCode, String);
 
     #[doc = " Perform the extraction."]
-    async fn from_request_parts(parts: &mut Parts,state: &S,) -> Result<Self,Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &S,) -> Result<Self,Self::Rejection> {
+        let _ = state;
         if let Some(token) = parts.headers.get("Authorization") {
             let token = token.to_str().unwrap();
             if !token.starts_with("Bearer "){
@@ -77,6 +74,23 @@ pub struct UserRow{
     username: String,
     password: String,
     id: Uuid,
+}
+
+
+pub async fn delete_account_handler(
+    user: Claims,
+    State(db_pool): State<PgPool>
+) -> StatusCode{
+
+    let res = sqlx::query!("DELETE FROM users WHERE id=$1", user.id)
+        .execute(&db_pool).await;
+
+    if let Ok(res) = res{
+        if res.rows_affected() == 1{
+            return StatusCode::OK;
+        }
+    }
+    StatusCode::INTERNAL_SERVER_ERROR
 }
 
 
@@ -125,9 +139,6 @@ pub async fn register_handler(
         }).to_string()
     ))
 }
-
-
-
 
 
 #[derive(Deserialize)]
