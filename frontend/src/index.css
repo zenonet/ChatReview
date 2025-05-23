@@ -1,10 +1,10 @@
 * {
-    --primary: rgb(0, 191, 165);
-    --background: black;
+    --primary: #F78E69;
+    --background: #010E14;
     --foreground: white;
 
-    --own-message-background: #8f7c33;
-    --others-message-background: rgb(85, 76, 13);
+    --own-message-background: #F78E69;
+    --others-message-background: #7CA5B8;
 }
 
 
