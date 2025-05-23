@@ -19,3 +19,8 @@ export class Message{
         this.content = msg
     }
 }
+
+export class Comment{
+    id: String
+    content: String
+}

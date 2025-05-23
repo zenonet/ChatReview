@@ -1,7 +1,7 @@
 
 use axum::extract::Path;
 use axum::Json;
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
@@ -307,13 +307,6 @@ pub struct NewComment{
     pub content: String,
 }
 
-struct CommentRow{
-    id: Uuid,
-    message_id:Uuid,
-    owner_id: Uuid,
-    content: String,
-}
-
 pub(crate) async fn post_comment(
     user: Claims,
     State(db_pool): State<PgPool>,
@@ -340,5 +333,54 @@ pub(crate) async fn post_comment(
             StatusCode::INTERNAL_SERVER_ERROR,
             res.unwrap_err().to_string()
         ))
+    }
+}
+
+
+struct CommentRow{
+    id: Uuid,
+    message_id: Uuid,
+    owner_id: Uuid,
+    content: String,
+    time: Option<DateTime<Utc>>
+}
+
+#[derive(Serialize)]
+struct Comment{
+    id: Uuid,
+    #[serde(alias = "ownerId")]
+    owner_id: Uuid,
+    content: String
+}
+
+pub(crate) async fn get_comments_for_message(
+    State(db_pool): State<PgPool>,
+    Path(message_id): Path<Uuid>
+) -> Result<(StatusCode, String), (StatusCode, String)>{
+
+    let result = sqlx::query_as!(CommentRow, "SELECT * FROM comments WHERE message_id = $1",
+        message_id
+    ).fetch_all(&db_pool).await;
+
+
+    match result {
+        Ok(comments) => {
+            Ok((
+                StatusCode::OK,
+                json!(comments.into_iter().map(|row|{
+                    Comment{
+                        id: row.id,
+                        owner_id: row.owner_id,
+                        content: row.content
+                    }
+                }).collect::<Vec<Comment>>()).to_string()
+            ))
+        },
+        Err(e) => {
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                e.to_string()
+            ))
+        }
     }
 }

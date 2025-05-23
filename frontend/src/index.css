@@ -3,8 +3,8 @@
     --background: black;
     --foreground: white;
 
-    --own-message-background: lime;
-    --others-message-background: cyan;
+    --own-message-background: #8f7c33;
+    --others-message-background: rgb(85, 76, 13);
 }
 
 
@@ -27,6 +27,13 @@ body {
     padding-top: 5vw;
 }
 
+
+.container{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
 
 .button-row{
     display: flex;
@@ -63,8 +70,10 @@ button{
     padding: 5pt;
     border: transparent 2px solid;
     color: white;
-    font-weight: bold;
     font-size: 1em;
+}
+button strong{
+    font-weight: bold;
 }
 
 button.secondary{

@@ -46,6 +46,7 @@ async fn main() {
         .route("/chat/", post(chats::create_chat))
 
         .route("/comment/", post(chats::post_comment))
+        .route("/comment/forMessage/{messageId}", get(chats::get_comments_for_message))
 
         .route("/profile/", delete(auth::delete_account_handler))
         //.route_layer(auth_middleware)

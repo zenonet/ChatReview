@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { Message } from '@/model/chat';
+import { Message, Comment } from '@/model/chat';
 import ChatMessage from './ChatMessage.vue';
-import { computed, ref, Ref } from 'vue';
+import { computed, onMounted, ref, Ref, watch } from 'vue';
 import { API_URL, appState } from '@/global';
 
 
@@ -11,7 +11,7 @@ const props = defineProps({
 
 let ratingInputVal: Ref<Number> = ref(0);
 
-async function submitRating(){
+async function submitRating() {
     appState.auth.redirectIfNotLoggedIn();
 
     let rating = {
@@ -29,13 +29,13 @@ async function submitRating(){
 
     res.maybeRedirectToLogin()
 
-    if(res.ok){
+    if (res.ok) {
         console.log("Rating posted successfully!")
     }
 }
 
 const commentVal: Ref<string> = ref("");
-async function postComment(){
+async function postComment() {
     appState.auth.redirectIfNotLoggedIn();
 
     const comment = {
@@ -53,12 +53,31 @@ async function postComment(){
     })
     res.maybeRedirectToLogin()
 
-    if(res.ok){
+    if (res.ok) {
         console.log("Comment posted successfully!")
     }
 }
 
+const comments: Ref<Comment[]> = ref(null);
+async function loadComments() {
+    const resp = await fetch(API_URL + "/comment/forMessage/" + props.message.id);
+
+    comments.value = await resp.json();
+    console.log("Comments for message loaded!")
+}
+
 let avgRating = computed(() => (props.message.avg_rating || 0).toString())
+
+
+// Watch for changes of the selected message
+// If the message changed, load the comments for the new message
+watch(
+  () => props.message,
+  (_) => {
+    if(props.message) loadComments();
+  },
+);
+
 </script>
 
 <template>
@@ -79,8 +98,17 @@ let avgRating = computed(() => (props.message.avg_rating || 0).toString())
             <h3>Comments</h3>
             <div class="container">
                 <h4>Your comment:</h4>
-                <textarea placeholder="What do you think of this?" v-model="commentVal"/>
+                <textarea placeholder="What do you think of this?" v-model="commentVal" />
                 <button v-on:click="postComment">Submit</button>
+                <h4>Other comments</h4>
+                <div v-if="comments != null">
+                    <div v-for="comment in comments">
+                        <p>{{ comment.content }}</p>
+                    </div>
+                </div>
+                <div v-else>
+                    Loading comments...
+                </div>
             </div>
         </div>
     </div>
@@ -88,7 +116,7 @@ let avgRating = computed(() => (props.message.avg_rating || 0).toString())
 </template>
 
 <style scoped>
-textarea{
+textarea {
     background-color: var(--background);
     color: var(--foreground);
     border: none;
