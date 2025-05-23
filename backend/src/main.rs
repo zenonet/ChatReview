@@ -55,8 +55,12 @@ async fn main() {
         //.route("/tasks/:task_id", patch(update_task).delete(delete_task))
         .layer(
             CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any) // TODO
+                .allow_origin([
+                    #[cfg(debug_assertions)]
+                    "http://localhost:3000".parse().unwrap(),
+                    "https://zenonet.de".parse().unwrap(),
+                ])
+                .allow_methods(Any)
                 .allow_headers(Any),
         )
         .with_state(db_pool);
