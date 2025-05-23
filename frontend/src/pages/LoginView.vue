@@ -52,7 +52,7 @@ let errorMsg = computed(() =>
 
             <div class="field-container">
                 <label>Password</label>
-                <input v-model="password" type="password" />
+                <input v-model="password" v-on:keyup.enter="loginClick" type="password" />
             </div>
 
             <span style="color: red; display: none" :style="{ 'display': errorDisplayState }">
