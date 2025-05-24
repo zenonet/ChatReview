@@ -26,3 +26,9 @@ export class Comment{
     content: String
     timestamp: number
 }
+
+
+export class Stat {
+	name: string
+	value: number
+}

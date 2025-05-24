@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { API_URL } from '@/global';
+import { API_URL, appState } from '@/global';
 import { Ref, ref } from 'vue';
+import StatGauge from './StatGauge.vue'
+import { Stat } from '@/model/chat';
 
-
-class Stat {
-    name: string
-    value: number
-}
 
 const stats: Ref<Stat[]> = ref(null)
 async function fetchStats() {
@@ -23,10 +20,10 @@ fetchStats();
     <div style="display: flex; flex-direction: column;">
         <h1 style="align-self: center;">Platform Statistics</h1>
         <div class="row" v-if="stats">
-            <div class="gauge" v-for="stat in stats">
-                <span class="title">{{ stat.name }}</span>
-                <span class="value">{{ (Math.round(stat.value * 100) / 100).toString() }}</span>
-            </div>
+            <StatGauge v-for="stat in stats" :stat="stat" />
+            <StatGauge v-if="appState.auth.loggedIn()" :stat="{name: appState.auth.username + 's', value: 1}" />
+            <span v-else/>
+            <p>This would probably look more impressive if people actually used this lmao</p>
         </div>
         <div v-else>
             Loading stats...
@@ -35,21 +32,6 @@ fetchStats();
 </template>
 
 <style scoped>
-.gauge {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.gauge > .value {
-    font-size: 2em;
-    font-weight: bold;
-}
-
-.gauge > .title {
-    text-align: center;
-}
-
 .row {
     display: flex;
     flex-direction: row;
