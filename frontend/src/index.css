@@ -2,9 +2,15 @@
     --primary: #F78E69;
     --background: #010E14;
     --foreground: white;
+    --foreground-secondary: rgb(161, 161, 161);
 
     --own-message-background: #F78E69;
     --others-message-background: #7CA5B8;
+}
+
+
+.secondary-text{
+    color: var(--foreground-secondary)
 }
 
 

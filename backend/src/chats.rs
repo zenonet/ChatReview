@@ -176,15 +176,15 @@ pub(crate) async fn get_random_chat(
 }
 
 pub(crate) async fn get_chat_by_id(
-    user: Claims,
-    State(db_pool): State<PgPool>,
+/*     user: Claims,
+ */    State(db_pool): State<PgPool>,
     Path(chat_id): Path<Uuid>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let chat = sqlx::query_as!(
         ChatRow,
-        "SELECT * FROM chats WHERE id=$1 AND owner_id=$2 LIMIT 1",
+        "SELECT * FROM chats WHERE id=$1 LIMIT 1",
         chat_id,
-        user.id
+        //user.id (if you use AND owner_id=$2 )
     )
     .fetch_optional(&db_pool)
     .await
@@ -342,15 +342,19 @@ struct CommentRow{
     message_id: Uuid,
     owner_id: Uuid,
     content: String,
-    time: Option<DateTime<Utc>>
+    time: Option<DateTime<Utc>>,
+    owner_name: String,
 }
 
 #[derive(Serialize)]
 struct Comment{
     id: Uuid,
-    #[serde(alias = "ownerId")]
+    #[serde(rename = "ownerId")]
     owner_id: Uuid,
-    content: String
+    content: String,
+    #[serde(rename = "ownerName")]
+    owner_name: String,
+    timestamp: i64
 }
 
 pub(crate) async fn get_comments_for_message(
@@ -358,10 +362,13 @@ pub(crate) async fn get_comments_for_message(
     Path(message_id): Path<Uuid>
 ) -> Result<(StatusCode, String), (StatusCode, String)>{
 
-    let result = sqlx::query_as!(CommentRow, "SELECT * FROM comments WHERE message_id = $1",
+    let result = sqlx::query_as!(CommentRow, r#"
+SELECT comments.*, users.username as owner_name FROM comments 
+JOIN users ON users.id = comments.owner_id
+WHERE message_id = $1
+        "#,
         message_id
     ).fetch_all(&db_pool).await;
-
 
     match result {
         Ok(comments) => {
@@ -371,7 +378,9 @@ pub(crate) async fn get_comments_for_message(
                     Comment{
                         id: row.id,
                         owner_id: row.owner_id,
-                        content: row.content
+                        content: row.content,
+                        owner_name: row.owner_name,
+                        timestamp: row.time.unwrap().timestamp()
                     }
                 }).collect::<Vec<Comment>>()).to_string()
             ))

@@ -22,5 +22,7 @@ export class Message{
 
 export class Comment{
     id: String
+    ownerName: String
     content: String
+    timestamp: number
 }

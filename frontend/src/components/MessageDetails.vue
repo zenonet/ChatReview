@@ -64,6 +64,7 @@ async function loadComments() {
 
     comments.value = await resp.json();
     console.log("Comments for message loaded!")
+    console.log(comments.value)
 }
 
 let avgRating = computed(() => (props.message.avg_rating || 0).toString())
@@ -72,11 +73,24 @@ let avgRating = computed(() => (props.message.avg_rating || 0).toString())
 // Watch for changes of the selected message
 // If the message changed, load the comments for the new message
 watch(
-  () => props.message,
-  (_) => {
-    if(props.message) loadComments();
-  },
+    () => props.message,
+    (_) => {
+        if (props.message) loadComments();
+    },
+    { immediate: true }
 );
+
+
+function formatTimestamp(timestamp: number){
+    let date = new Date(timestamp * 1000);
+    date.setSeconds(0)
+    const timeStr = `${date.getHours()}:${date.getMinutes()}`
+    /*return `${timeStr} ${date.toDateString()}`
+     return date.toLocaleString(null,  {
+        seco
+    }) */
+   return date.toLocaleString("DE-de")
+}
 
 </script>
 
@@ -101,8 +115,12 @@ watch(
                 <textarea placeholder="What do you think of this?" v-model="commentVal" />
                 <button v-on:click="postComment">Submit</button>
                 <h4>Other comments</h4>
-                <div v-if="comments != null">
-                    <div v-for="comment in comments">
+                <div id="commentList" v-if="comments != null">
+                    <div class="comment" v-for="comment in comments">
+                        <div style="display: flex; flex-direction: row; gap: 5pt">
+                            <span>{{ comment.ownerName }}</span>
+                            <span class="secondary-text">{{ formatTimestamp(comment.timestamp) }}</span>
+                        </div>
                         <p>{{ comment.content }}</p>
                     </div>
                 </div>
@@ -124,5 +142,16 @@ textarea {
     height: 2lh;
     padding: 5px;
     margin: 5px;
+}
+
+#commentList{
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.comment p {
+    margin-top: 5px;
+    margin-bottom: 5px;
 }
 </style>
