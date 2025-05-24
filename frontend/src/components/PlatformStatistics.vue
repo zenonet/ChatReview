@@ -17,14 +17,16 @@ fetchStats();
 </script>
 
 <template>
-    <div style="display: flex; flex-direction: column;">
-        <h1 style="align-self: center;">Platform Statistics</h1>
-        <div class="row" v-if="stats">
-            <StatGauge v-for="stat in stats" :stat="stat" />
-            <StatGauge v-if="appState.auth.loggedIn()" :stat="{name: appState.auth.username + 's', value: 1}" />
-            <span v-else/>
-            <p>This would probably look more impressive if people actually used this lmao</p>
-        </div>
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <h1>Platform Statistics</h1>
+        <template v-if="stats">
+            <div class="row">
+                <StatGauge v-for="stat in stats" :stat="stat" />
+                <StatGauge v-if="appState.auth.loggedIn()" :stat="{ name: appState.auth.username + 's', value: 1 }" />
+                <template v-else />
+            </div>
+            <p class="secondary-text" style="margin-top: 40px;">This would probably look more impressive if people actually used this</p>
+        </template>
         <div v-else>
             Loading stats...
         </div>
