@@ -9,6 +9,7 @@ import MyChats from "./pages/MyChats.vue"
 import MyChatsAsync from "./pages/MyChatsAsync.vue"
 import Profile from "./pages/Profile.vue"
 import NewLayout from "./pages/NewLayout.vue"
+import PlatformStatistics from "./components/PlatformStatistics.vue"
 
 const routes: RouteRecordRaw[] = [
     { path: "/", component: App },
@@ -17,6 +18,8 @@ const routes: RouteRecordRaw[] = [
     { path: "/newchat", component: ChatCreator },
     { path: "/mychats", component: MyChatsAsync},
     { path: "/profile", component: Profile },
+
+    { path: "/stats", component: PlatformStatistics },
 
     { path: "/newlayout", component: NewLayout },
 

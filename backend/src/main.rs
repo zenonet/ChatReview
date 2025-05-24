@@ -8,6 +8,7 @@ use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 mod auth;
 mod chats;
+mod stats;
 
 #[tokio::main]
 async fn main() {
@@ -52,6 +53,8 @@ async fn main() {
         //.route_layer(auth_middleware)
         .route("/register/", post(auth::register_handler))
         .route("/login/", post(auth::login_handler))
+
+        .route("/stats/", get(stats::get_stats))
         //.route("/tasks/:task_id", patch(update_task).delete(delete_task))
         .layer(
             CorsLayer::new()
