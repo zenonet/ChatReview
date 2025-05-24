@@ -11,17 +11,19 @@ let password = ref("");
 
 let errorCounter = ref(0);
 
+// Move this value to this component so that it doesn't affect later login tries
+let redirectAfterLogin = appState.redirectAfterLogin;
+appState.redirectAfterLogin = null;
+
 async function loginClick() {
     if (!await appState.auth.login(username.value, password.value)) {
         errorCounter.value++;
     }else{
         errorCounter.value = 0;
-        if(appState.redirectAfterLogin != null){
-            const redirect = appState.redirectAfterLogin;
-            console.log("Redirecting to " + redirect + " after login...")
-            appState.redirectAfterLogin = null;
+        if(redirectAfterLogin != null){
+            console.log("Redirecting to " + redirectAfterLogin + " after login...")
             router.replace({
-                path: redirect
+                path: redirectAfterLogin
             })
         }else{
             router.replace("/")
@@ -45,6 +47,12 @@ let errorMsg = computed(() =>
     <div class="page">
         <div class="login-container">
             <h1>Login</h1>
+
+            <div v-if="redirectAfterLogin">
+                <span style="color: red">This action requires logging in</span>
+            </div>
+            <div v-else></div>
+
             <div class="field-container">
                 <label>Username</label>
                 <input v-model="username" maxlength="128" />
