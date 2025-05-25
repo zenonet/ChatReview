@@ -102,9 +102,9 @@ export let appState = reactive({
         },
 
         redirectIfNotLoggedIn() {
-            console.log(this.loggedIn)
             if (!this.loggedIn()) {
-                //router.push("/login");
+                    appState.redirectAfterLogin = router.currentRoute.value.fullPath;
+                router.push("/login");
             }
         }
     }

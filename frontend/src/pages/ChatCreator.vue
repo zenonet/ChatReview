@@ -7,6 +7,8 @@ import router from '../routes';
 let chatName = ref("")
 
 
+appState.auth.redirectIfNotLoggedIn()
+
 async function createChat(){
 
     console.log("Using token:" + appState.auth._accessToken)
