@@ -10,9 +10,10 @@ import MyChatsAsync from "./pages/MyChatsAsync.vue"
 import Profile from "./pages/Profile.vue"
 import NewLayout from "./pages/NewLayout.vue"
 import PlatformStatistics from "./components/PlatformStatistics.vue"
+import LandingPage from "./pages/LandingPage.vue"
 
 const routes: RouteRecordRaw[] = [
-    { path: "/", component: App },
+    { path: "/", component: LandingPage },
     { path: "/login", component: LoginView },
     { path: "/edit/:id", component: ChatEditor},
     { path: "/newchat", component: ChatCreator },

@@ -75,10 +75,10 @@ button{
     border-radius: 2pt;
     padding: 5pt;
     border: transparent 2px solid;
-    color: white;
+    color: black;
     font-size: 1em;
 }
-button strong{
+button.strong{
     font-weight: bold;
 }
 
