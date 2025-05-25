@@ -8,10 +8,8 @@ import { Ref, ref } from 'vue';
 
 let chat:Ref<Chat> = ref(null);
 async function loadChat(){
-    let resp = await fetch(API_URL + "/random_chat/");
-    chat.value = await resp.json();
-    console.log("chat loaded successfully")
-}
+    let resp = await fetch(API_URL + "/chat/c13b5c10-2401-4565-9c1d-f61a59bd941d");
+    chat.value = await resp.json();}
 
 
 loadChat()

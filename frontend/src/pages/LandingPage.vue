@@ -45,7 +45,7 @@ let demoChat: Chat = {
 }
 
 function startReviewingClicked() {
-    router.push("/newlayout")
+    router.push("/feed")
 }
 
 function publishAChatClicked() {

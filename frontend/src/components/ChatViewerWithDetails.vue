@@ -8,21 +8,6 @@ import { Ref, ref } from "vue";
 const props = defineProps({
     chat: { type: Chat, default: null }
 })
-let e_chat = props.chat;
-if (e_chat == null) {
-    /*     e_chat = new Chat();
-        e_chat.id = "deez";
-        e_chat.name = "Ch-At"
-        e_chat.messages = [
-            {
-                id: "",
-                avg_rating: 0,
-                content: "Deez",
-                isOwn: false
-            }
-        ]; */
-}
-
 
 console.log("Details viewer is there")
 

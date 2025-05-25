@@ -11,14 +11,19 @@ import Profile from "./pages/Profile.vue"
 import NewLayout from "./pages/NewLayout.vue"
 import PlatformStatistics from "./components/PlatformStatistics.vue"
 import LandingPage from "./pages/LandingPage.vue"
+import Feed from "./pages/Feed.vue"
+import ChatViewerById from "./pages/ChatViewerById.vue"
 
 const routes: RouteRecordRaw[] = [
     { path: "/", component: LandingPage },
     { path: "/login", component: LoginView },
     { path: "/edit/:id", component: ChatEditor},
+    { path: "/chat/:id", component: ChatViewerById },
     { path: "/newchat", component: ChatCreator },
     { path: "/mychats", component: MyChatsAsync},
     { path: "/profile", component: Profile },
+
+    { path: "/feed", component: Feed },
 
     { path: "/stats", component: PlatformStatistics },
 

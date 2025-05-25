@@ -26,7 +26,9 @@ let loginClickPath = computed(() => {
 <template>
     <nav class="bar">
         <RouterLink to="/" v-text="'Home'" />
+        <RouterLink to="/feed" v-text="'Feed'" />
         <RouterLink to="/mychats" v-text="'My Chats'" />
+        <RouterLink to="/stats" v-text="'Stats'" />
         <div style="flex: 1;"></div>
         <RouterLink :to="loginClickPath" v-text="loginText" />
     </nav>
@@ -37,7 +39,7 @@ let loginClickPath = computed(() => {
     display: flex;
     flex-direction: row;
     gap: 20px;
-    padding: 5px
+    padding: 5px;
 }
 
 a {
