@@ -97,7 +97,7 @@ function formatTimestamp(timestamp: number){
 <template>
     <div v-if="message" style="width: fit-content;">
         <h2>Message details</h2>
-        <ChatMessage :message="message" />
+        <ChatMessage :message="message" :show-rating-indicator="false"/>
         <div id="rating">
             <h3>Rating</h3>
             <span>Average rating: {{ avgRating }}</span>

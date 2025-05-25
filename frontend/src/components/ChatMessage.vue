@@ -6,6 +6,7 @@ import MessageActionPopup from './MessageActionPopup.vue';
 
 const props = defineProps({
     message: { required: true, type: Message },
+    showRatingIndicator: { default: true, type: Boolean },
 })
 
 
@@ -33,45 +34,13 @@ async function postRating(value: Number){
     }
 }
 
-async function clicked() {
-    //showMenu.value = !showMenu.value;
-    //console.log("Showing menu!")
-/*     // TODO: Replace all popup stuff with nice UI
-    console.log(appState.auth)
-    if (!appState.auth.loggedIn()) {
-        alert("Login to rate messages");
-        return;
-    }
-
-    let resp = window.prompt("How would you rate this message?");
-    let value: Number = +resp;
-
-    if (value == null || value == undefined) {
-        return;
-    }
-
-    let rating = {
-        messageId: props.message.id,
-        value
-    };
-
-    // Post rating
-    
-
-    if (res.ok) {
-        alert("Rating accepted")
-    } else {
-        alert("An error occured")
-    } */
-}
-
 </script>
 
 
 
 <template>
     <div class="layout-container" :class="{ 'own-message': message.isOwn, 'others-message': !message.isOwn }">
-        <div class="rating-indicator">{{ message.avg_rating.toString() }}</div>
+        <div v-show="showRatingIndicator" class="rating-indicator">{{ message.avg_rating.toString() }}</div>
         <div class="message" v-on:mousedown="$emit('clicked')">
             <p style="margin: 0;">
                 {{ message.content }}

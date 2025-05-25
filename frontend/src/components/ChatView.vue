@@ -3,7 +3,8 @@ import { Chat, Message } from '../model/chat';
 import ChatMessage from './ChatMessage.vue';
 
 const props = defineProps({
-    chat: { default: null, type: Chat }
+    chat: { default: null, type: Chat },
+    showRatingIndicators: { default: true, type: Boolean }
 })
 
 const emit = defineEmits<{
@@ -16,8 +17,11 @@ const emit = defineEmits<{
     <div v-if="chat">
         <h2 style="text-align: center;">{{ chat?.name }}</h2>
         <div class="msg-list">
-            <ChatMessage v-for="msg of chat?.messages" :message="msg" @clicked="emit('messageClicked', msg)">
-            </ChatMessage>
+            <ChatMessage 
+            v-for="msg of chat?.messages" 
+            :message="msg"
+            :showRatingIndicator="showRatingIndicators"
+            @clicked="emit('messageClicked', msg)"/>
         </div>
     </div>
     <div v-else>
