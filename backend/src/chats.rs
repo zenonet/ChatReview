@@ -1,22 +1,21 @@
-
-use axum::extract::Path;
+use crate::auth::Claims;
 use axum::Json;
+use axum::extract::Path;
+use axum::extract::State;
+use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use uuid::Uuid;
-use axum::http::StatusCode;
 use sqlx::{FromRow, PgPool};
-use axum::extract::State;
-use crate::auth::Claims;
-
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, FromRow)]
 struct ChatRow {
     id: Uuid,
     name: Option<String>,
     description: Option<String>,
-    owner_id: Uuid,
+    user_id_a: Uuid,
+    user_id_b: Option<Uuid>,
 }
 
 #[derive(Serialize)]
@@ -27,19 +26,16 @@ pub struct Chat {
     pub messages: Vec<Message>,
 }
 
-#[derive(Serialize, Deserialize, FromRow, Debug)]
 struct MessageRow {
     id: Uuid,
     content: Option<String>,
 
-    #[serde(rename = "isOwn")]
-    is_own: Option<bool>,
+    is_owned_by_a: Option<bool>,
 
-    #[serde(rename = "chatId")]
     chat_id: Option<Uuid>,
     index: i32,
 
-    avg_rating: Option<f64>
+    avg_rating: Option<f64>,
 }
 
 #[derive(Serialize)]
@@ -50,23 +46,26 @@ pub struct Message {
     #[serde(rename = "isOwn")]
     pub is_own: bool,
 
-    pub avg_rating: f64
+    pub avg_rating: f64,
 }
-
 
 pub(crate) async fn get_my_chats(
     user: Claims,
     State(db_pool): State<PgPool>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let rows = sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE owner_id=$1", user.id)
-        .fetch_all(&db_pool)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                json!({"success": false, "message": e.to_string()}).to_string(),
-            )
-        })?;
+    let rows = sqlx::query_as!(
+        ChatRow,
+        "SELECT * FROM chats WHERE (user_id_a=$1 OR user_id_b=$1)",
+        user.id
+    )
+    .fetch_all(&db_pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            json!({"success": false, "message": e.to_string()}).to_string(),
+        )
+    })?;
 
     Ok((StatusCode::OK, json!(rows).to_string()))
 }
@@ -110,7 +109,7 @@ SELECT
     m.content,
     m.chat_id,
     m.index,
-    m.is_own,
+    m.is_owned_by_a,
     AVG(r.value) AS avg_rating
 FROM
     chat_messages m
@@ -129,7 +128,7 @@ ORDER BY m.index"#,
         .map(|row| Message {
             content: row.content.unwrap(),
             id: row.id,
-            is_own: row.is_own.unwrap_or_else(|| true),
+            is_own: row.is_owned_by_a.unwrap_or_else(|| true),
             avg_rating: row.avg_rating.unwrap_or(0f64),
         })
         .collect::<Vec<Message>>())
@@ -176,8 +175,8 @@ pub(crate) async fn get_random_chat(
 }
 
 pub(crate) async fn get_chat_by_id(
-/*     user: Claims,
- */    State(db_pool): State<PgPool>,
+    /*     user: Claims,
+     */ State(db_pool): State<PgPool>,
     Path(chat_id): Path<Uuid>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let chat = sqlx::query_as!(
@@ -226,8 +225,9 @@ pub(crate) async fn create_chat(
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let chat_id = Uuid::new_v4();
 
+    // This creates a recreated chat (because both user ids are the same)
     if sqlx::query!(
-        "INSERT INTO chats (id, name, description, owner_id) VALUES ($1,$2,$3,$4)",
+        "INSERT INTO chats (id, name, description, user_id_a, user_id_b) VALUES ($1,$2,$3,$4,$4)",
         chat_id,
         chat.name,
         chat.description,
@@ -246,13 +246,74 @@ pub(crate) async fn create_chat(
     }
 }
 
+pub(crate) async fn create_chat_with_random(
+    user: Claims,
+    State(db_pool): State<PgPool>,
+) -> Result<(StatusCode, String), (StatusCode, String)> {
+    // TODO: Make sure a user can only create one random request
+
+    // Check if there are open chat requests that can be accepted
+    let chat = sqlx::query_as!(
+        ChatRow,
+        "SELECT * FROM chats WHERE user_id_b IS NULL AND user_id_a != $1",
+        user.id
+    )
+    .fetch_optional(&db_pool)
+    .await;
+
+    let chat = match chat {
+        Ok(val) => val,
+        Err(e) => {
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()));
+        }
+    };
+
+    if let Some(chat) = chat {
+        // Close the chat request
+        let res = sqlx::query!(
+            "UPDATE chats SET user_id_b = $1 WHERE id = $2",
+            user.id,
+            chat.id
+        )
+        .execute(&db_pool)
+        .await;
+
+        match res {
+            Ok(_) => Ok((StatusCode::OK, format!("{}", chat.id))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to accept open request: {}", e),
+            )),
+        }
+    } else {
+        // No chat request exists, create a new one
+        let chat_id = Uuid::new_v4();
+        let res = sqlx::query!("INSERT INTO chats (id, name, description, user_id_a, user_id_b) VALUES ($1,$2,NULL,$3, NULL)",
+            chat_id,
+            String::from("New random chat"),
+            user.id
+        ).execute(&db_pool).await;
+
+        match res {
+            Ok(_) => Ok((StatusCode::CREATED, String::from("Created chat request"))),
+            Err(e) => {
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to create new chat request: {}", e)
+                ))
+            }
+        }
+        
+    }
+}
+
 #[derive(Deserialize)]
 pub(crate) struct NewMessage {
     #[serde(alias = "chatId")]
     pub(crate) chat_id: Uuid,
     pub(crate) content: String,
     #[serde(alias = "isOwn")]
-    pub(crate) is_own: bool,
+    pub(crate) is_owned_by_a: bool,
     pub(crate) index: i32,
 }
 
@@ -262,8 +323,8 @@ pub(crate) async fn post_message(
     Json(message): Json<NewMessage>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     // Check if the specified chat belongs to the user
-    let _ = sqlx::query!(
-        "SELECT owner_Id FROM chats WHERE id=$1 AND owner_id=$2 LIMIT 1",
+    let user_ids = sqlx::query!(
+        "SELECT user_id_a AS a, user_id_b AS b FROM chats WHERE id=$1 AND user_id_b IS NOT NULL AND (user_id_a=$2 OR user_id_b=$2) LIMIT 1",
         message.chat_id,
         user.id
     )
@@ -276,17 +337,27 @@ pub(crate) async fn post_message(
         )
     })?;
 
+    let is_recreated_chat = user_ids.a == user_ids.b.unwrap(); // The sql query ensures that user_id_b is never null
+
+    // Now, check if the user is allowed to send the message for that side
+    if !is_recreated_chat && (message.is_owned_by_a ^ (user.id == user_ids.a)) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "User is not allowed to post a message from that side".to_owned(),
+        ));
+    }
+
     // At this point, the query would've thrown an error if the chat doesn't exist or doesn't belong to the user
 
     let message_id = Uuid::new_v4();
 
     let query = sqlx::query!(
-        "INSERT INTO chat_messages (id, content, chat_id, index, is_own) VALUES ($1,$2,$3,$4,$5)",
+        "INSERT INTO chat_messages (id, content, chat_id, index, is_owned_by_a) VALUES ($1,$2,$3,$4,$5)",
         message_id,
         message.content,
         message.chat_id,
         message.index,
-        message.is_own
+        message.is_owned_by_a
     );
 
     if let Ok(_) = query.execute(&db_pool).await {
@@ -299,9 +370,8 @@ pub(crate) async fn post_message(
     }
 }
 
-
 #[derive(Deserialize)]
-pub struct NewComment{
+pub struct NewComment {
     #[serde(alias = "messageId")]
     pub message_id: Uuid,
     pub content: String,
@@ -310,34 +380,32 @@ pub struct NewComment{
 pub(crate) async fn post_comment(
     user: Claims,
     State(db_pool): State<PgPool>,
-    Json(comment): Json<NewComment>
-) -> Result<(StatusCode, String), (StatusCode, String)>{
+    Json(comment): Json<NewComment>,
+) -> Result<(StatusCode, String), (StatusCode, String)> {
+    let id = Uuid::new_v4();
 
-    let id = Uuid::new_v4(); 
-
-    let res = sqlx::query!("INSERT INTO comments (id, message_id, owner_id, content, time) VALUES ($1,$2,$3,$4,$5)",
+    let res = sqlx::query!(
+        "INSERT INTO comments (id, message_id, owner_id, content, time) VALUES ($1,$2,$3,$4,$5)",
         id,
         comment.message_id,
         user.id,
         comment.content,
         chrono::Utc::now()
-    ).execute(&db_pool).await;
+    )
+    .execute(&db_pool)
+    .await;
 
-    if res.is_ok(){
-        Ok((
-            StatusCode::CREATED,
-            id.to_string()
-        ))
-    }else{
+    if res.is_ok() {
+        Ok((StatusCode::CREATED, id.to_string()))
+    } else {
         Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            res.unwrap_err().to_string()
+            res.unwrap_err().to_string(),
         ))
     }
 }
 
-
-struct CommentRow{
+struct CommentRow {
     id: Uuid,
     message_id: Uuid,
     owner_id: Uuid,
@@ -347,49 +415,51 @@ struct CommentRow{
 }
 
 #[derive(Serialize)]
-struct Comment{
+struct Comment {
     id: Uuid,
     #[serde(rename = "ownerId")]
     owner_id: Uuid,
     content: String,
     #[serde(rename = "ownerName")]
     owner_name: String,
-    timestamp: i64
+    timestamp: i64,
 }
 
 pub(crate) async fn get_comments_for_message(
     State(db_pool): State<PgPool>,
-    Path(message_id): Path<Uuid>
-) -> Result<(StatusCode, String), (StatusCode, String)>{
-
-    let result = sqlx::query_as!(CommentRow, r#"
+    Path(message_id): Path<Uuid>,
+) -> Result<(StatusCode, String), (StatusCode, String)> {
+    let result = sqlx::query_as!(
+        CommentRow,
+        r#"
 SELECT comments.*, users.username as owner_name FROM comments 
 JOIN users ON users.id = comments.owner_id
 WHERE message_id = $1
         "#,
         message_id
-    ).fetch_all(&db_pool).await;
+    )
+    .fetch_all(&db_pool)
+    .await;
 
     match result {
-        Ok(comments) => {
-            Ok((
-                StatusCode::OK,
-                json!(comments.into_iter().map(|row|{
-                    Comment{
-                        id: row.id,
-                        owner_id: row.owner_id,
-                        content: row.content,
-                        owner_name: row.owner_name,
-                        timestamp: row.time.unwrap().timestamp()
-                    }
-                }).collect::<Vec<Comment>>()).to_string()
-            ))
-        },
-        Err(e) => {
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                e.to_string()
-            ))
-        }
+        Ok(comments) => Ok((
+            StatusCode::OK,
+            json!(
+                comments
+                    .into_iter()
+                    .map(|row| {
+                        Comment {
+                            id: row.id,
+                            owner_id: row.owner_id,
+                            content: row.content,
+                            owner_name: row.owner_name,
+                            timestamp: row.time.unwrap().timestamp(),
+                        }
+                    })
+                    .collect::<Vec<Comment>>()
+            )
+            .to_string(),
+        )),
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
     }
 }

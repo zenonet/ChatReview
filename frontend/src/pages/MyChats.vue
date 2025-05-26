@@ -20,6 +20,28 @@ async function createChatClicked() {
     router.push("/newchat");
 }
 
+async function createChatWithRandomClicked() {
+    appState.auth.redirectIfNotLoggedIn();
+    const resp = await fetch(API_URL + "/chat/random/", {
+        method: "POST",
+        headers: {
+            "Authorization": "Bearer " + appState.auth.accessToken(),
+        }
+    })
+
+    if (!resp.ok) return;
+
+    let chatId = await resp.text();
+
+    if (resp.status == 200) {
+        console.log("Found a chat partner!");
+        router.push("/edit/" + chatId)
+    } else if (resp.status == 201) {
+        console.log("Created chat request");
+        // TODO
+    }
+}
+
 </script>
 
 <template>
@@ -28,6 +50,7 @@ async function createChatClicked() {
         <div style="display: flex; max-width: 80vw;">
             <div style="flex: 1"></div>
             <button v-on:click="createChatClicked">New Chat</button>
+            <button v-on:click="createChatWithRandomClicked">Chat with random</button>
         </div>
         <div class="list">
             <h2>Your chats:</h2>
@@ -40,7 +63,6 @@ async function createChatClicked() {
 </template>
 
 <style scoped>
-
 .list {
     margin-left: auto;
     margin-right: auto;
@@ -49,5 +71,4 @@ async function createChatClicked() {
     gap: 25px;
     text-align: left;
 }
-
 </style>

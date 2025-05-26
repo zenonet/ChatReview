@@ -43,6 +43,7 @@ async fn main() {
         .route("/random_chat/", get(chats::get_random_chat))
         .route("/message/", post(chats::post_message))
         .route("/rating/", post(chats::post_rating))
+        .route("/chat/random/", post(chats::create_chat_with_random))
         .route("/chat/{chatId}", get(chats::get_chat_by_id))
         .route("/chat/", post(chats::create_chat))
 
