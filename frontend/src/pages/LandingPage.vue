@@ -75,7 +75,7 @@ function publishAChatClicked() {
     </div>
 </template>
 
-<style lang="css">
+<style lang="css" scoped>
 .main-container {
     position: absolute;
     display: flex;
@@ -87,10 +87,19 @@ function publishAChatClicked() {
     height: 200vh
 }
 
+
+#demoChat {
+    margin-top: 200px;
+}
+
 h1 {
     text-align: center;
     font-size: 3em;
 }
+
+</style>
+
+<style lang="css">
 
 @keyframes demoChatAppear {
     0% {
@@ -110,13 +119,11 @@ h1 {
     } */
 }
 
-#demoChat {
-    margin-top: 200px;
-}
-
-.message {
+/* this can't be scoped because .message is not in scope */
+#demoChat .message {
     animation-name: demoChatAppear;
     animation-fill-mode: forwards;
     animation-timeline: view(y);
 }
+
 </style>
