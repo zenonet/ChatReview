@@ -10,7 +10,7 @@ pub struct Stat {
 }
 
 pub(crate) async fn get_stats(
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
 ) -> Result<String, (StatusCode, String)> {
     // TODO: Implement caching stats
 
@@ -24,7 +24,7 @@ UNION SELECT 'Total chats', count(1) FROM chats
 UNION SELECT 'Average message rating', avg(value) FROM message_ratings
 "#
     )
-    .fetch_all(&db_pool)
+    .fetch_all(&state.db_pool)
     .await;
 
     match res {

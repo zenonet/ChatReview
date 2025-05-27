@@ -1,3 +1,4 @@
+use std::os::linux::raw::stat;
 use std::sync::Arc;
 
 use crate::Synchronizer;
@@ -61,14 +62,14 @@ pub struct Message {
 
 pub(crate) async fn get_my_chats(
     user: Claims,
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let rows = sqlx::query_as!(
         ChatRow,
         "SELECT * FROM chats WHERE (user_id_a=$1 OR user_id_b=$1)",
         user.id
     )
-    .fetch_all(&db_pool)
+    .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
         (
@@ -89,7 +90,7 @@ pub(crate) struct NewRating {
 
 pub(crate) async fn post_rating(
     user: Claims,
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
     Json(rating): Json<NewRating>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!("INSERT INTO message_ratings (message_id, owner_id, value, changed) VALUES ($1,$2,$3,$4) ON CONFLICT (message_id,owner_id) DO UPDATE SET value = $3, changed = $4",
@@ -97,7 +98,7 @@ pub(crate) async fn post_rating(
             user.id,
             rating.value,
             chrono::Utc::now()
-        ).execute(&db_pool).await.map_err(|e|{
+        ).execute(&state.db_pool).await.map_err(|e|{
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 e.to_string()
@@ -146,10 +147,10 @@ ORDER BY m.index"#,
 
 // TODO: Investigate how to return objects directly and let them be serialized by axum
 pub(crate) async fn get_random_chat(
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let chat_row = sqlx::query_as!(ChatRow, "SELECT * FROM chats ORDER BY RANDOM() LIMIT 1")
-        .fetch_all(&db_pool)
+        .fetch_all(&state.db_pool)
         .await
         .map_err(|e| {
             (
@@ -170,7 +171,7 @@ pub(crate) async fn get_random_chat(
     // TODO: Maybe do a join here? Idk, that would mean that a lot of would have to be sent twice
 
     // Also fetch the messages of the chat
-    let messages = get_messages_from_chat_id(chat_row.id, &db_pool)
+    let messages = get_messages_from_chat_id(chat_row.id, &state.db_pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -214,10 +215,10 @@ async fn load_chat_from_db(id: Uuid, db_pool: &PgPool) -> Result<Chat, sqlx::Err
 
 pub(crate) async fn get_chat_by_id(
     /*     user: Claims,
-     */ State(db_pool): State<PgPool>,
+     */ State(state): State<crate::State>,
     Path(chat_id): Path<Uuid>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let chat = load_chat_from_db(chat_id, &db_pool)
+    let chat = load_chat_from_db(chat_id, &state.db_pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -226,15 +227,15 @@ pub(crate) async fn get_chat_by_id(
 
 pub(crate) async fn get_chat_by_id_from_user_perspective(
     user: Claims,
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
     Path(chat_id): Path<Uuid>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     // I used a closure here because it allowed me to map all sql errors at once later
     let chat: Result<Chat, sqlx::Error> = (async || {
-        let chat_row = get_chat_row_from_id(chat_id, &db_pool).await?;
+        let chat_row = get_chat_row_from_id(chat_id, &state.db_pool).await?;
 
         // TODO: theoretically, these 2 request could run concurrently
-        let mut messages = get_messages_from_chat_id(chat_id, &db_pool).await?;
+        let mut messages = get_messages_from_chat_id(chat_id, &state.db_pool).await?;
 
         // if the user is user b, invert the message perspectives
         let invert_chat = Some(user.id) == chat_row.user_id_b && user.id != chat_row.user_id_a;
@@ -267,7 +268,7 @@ pub(crate) struct NewChat {
 
 pub(crate) async fn create_chat(
     user: Claims,
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
     Json(chat): Json<NewChat>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let chat_id = Uuid::new_v4();
@@ -280,7 +281,7 @@ pub(crate) async fn create_chat(
         chat.description,
         user.id
     )
-    .execute(&db_pool)
+    .execute(&state.db_pool)
     .await
     .is_ok()
     {
@@ -295,7 +296,7 @@ pub(crate) async fn create_chat(
 
 pub(crate) async fn create_chat_with_random(
     user: Claims,
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     // TODO: Make sure a user can only create one random request
 
@@ -305,7 +306,7 @@ pub(crate) async fn create_chat_with_random(
         "SELECT * FROM chats WHERE user_id_b IS NULL AND user_id_a != $1",
         user.id
     )
-    .fetch_optional(&db_pool)
+    .fetch_optional(&state.db_pool)
     .await;
 
     let chat = match chat {
@@ -322,7 +323,7 @@ pub(crate) async fn create_chat_with_random(
             user.id,
             chat.id
         )
-        .execute(&db_pool)
+        .execute(&state.db_pool)
         .await;
 
         match res {
@@ -339,7 +340,7 @@ pub(crate) async fn create_chat_with_random(
             chat_id,
             String::from("New random chat"),
             user.id
-        ).execute(&db_pool).await;
+        ).execute(&state.db_pool).await;
 
         match res {
             Ok(_) => Ok((StatusCode::CREATED, String::from("Created chat request"))),
@@ -363,7 +364,7 @@ pub(crate) struct NewMessage {
 
 pub(crate) async fn post_message(
     user: Claims,
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
     Json(mut message): Json<NewMessage>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     // Check if the specified chat belongs to the user
@@ -372,7 +373,7 @@ pub(crate) async fn post_message(
         message.chat_id,
         user.id
     )
-    .fetch_one(&db_pool)
+    .fetch_one(&state.db_pool)
     .await
     .map_err(|_| {
         (
@@ -412,7 +413,16 @@ pub(crate) async fn post_message(
         message.is_owned_by_a
     );
 
-    if let Ok(_) = query.execute(&db_pool).await {
+    if let Ok(_) = query.execute(&state.db_pool).await {
+
+        let msg = Message{
+            id: message_id,
+            content: message.content,
+            is_own: message.is_owned_by_a,
+            avg_rating: 0f64,
+        };
+
+        state.synchronizer.lock().await.post_message(message.chat_id, msg);
         Ok(StatusCode::CREATED)
     } else {
         Err((
@@ -431,7 +441,7 @@ pub struct NewComment {
 
 pub(crate) async fn post_comment(
     user: Claims,
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
     Json(comment): Json<NewComment>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let id = Uuid::new_v4();
@@ -444,7 +454,7 @@ pub(crate) async fn post_comment(
         comment.content,
         chrono::Utc::now()
     )
-    .execute(&db_pool)
+    .execute(&state.db_pool)
     .await;
 
     if res.is_ok() {
@@ -478,7 +488,7 @@ struct Comment {
 }
 
 pub(crate) async fn get_comments_for_message(
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
     Path(message_id): Path<Uuid>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let result = sqlx::query_as!(
@@ -490,7 +500,7 @@ WHERE message_id = $1
         "#,
         message_id
     )
-    .fetch_all(&db_pool)
+    .fetch_all(&state.db_pool)
     .await;
 
     match result {
@@ -518,27 +528,28 @@ WHERE message_id = $1
 
 pub(crate) async fn websocket_chat_updates(
     ws: WebSocketUpgrade,
-    State(db_pool): State<PgPool>,
-    State(mut synchronizer): State<Arc<Mutex<Synchronizer>>>,
+    State(state): State<crate::State>,
     Path(chat_id): Path<Uuid>,
 ) -> impl IntoResponse {
-    let mut synchronizer = synchronizer.lock().await;
+    let mut synchronizer = state.synchronizer.lock().await;
     let mut receiver = synchronizer.get_receiver(chat_id);
     drop(synchronizer);
 
     ws.on_upgrade(async move |mut socket| {
         loop {
-            let chat_id = chat_id;
 
             if receiver.changed().await.is_err() {
-                socket
+                let _ = socket
                     .send(ws::Message::Close(Some(CloseFrame {
                         code: 500u16,
                         reason: "Synchronization error".into(),
                     })))
                     .await;
+                println!("Sync error!");
                 break;
-            } 
+            }
+
+            println!("Message sync received!");
 
             // Cloning the value somehow fixes the fact that the
             // smart pointer coming out of borrow() is not `Send`
@@ -546,7 +557,7 @@ pub(crate) async fn websocket_chat_updates(
             let update = receiver.borrow().clone();
 
             if let Update::MessageAdded(msg) = update {
-                let json_msg = json!(msg).to_string();
+                let json_msg = json!(msg).to_string() + "\n";
                 socket.send(ws::Message::text(json_msg)).await.unwrap();
             }
         }

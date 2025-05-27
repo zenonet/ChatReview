@@ -79,11 +79,11 @@ pub struct UserRow{
 
 pub async fn delete_account_handler(
     user: Claims,
-    State(db_pool): State<PgPool>
+    State(state): State<crate::State>
 ) -> StatusCode{
 
     let res = sqlx::query!("DELETE FROM users WHERE id=$1", user.id)
-        .execute(&db_pool).await;
+        .execute(&state.db_pool).await;
 
     if let Ok(res) = res{
         if res.rows_affected() == 1{
@@ -101,7 +101,7 @@ pub struct RegisterRequestBody{
 }
 
 pub async fn register_handler(
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
     Json(body):  Json<RegisterRequestBody>
 ) -> Result<(StatusCode, String), (StatusCode, String)>{
     let salt = SaltString::generate(&mut OsRng);
@@ -124,7 +124,7 @@ pub async fn register_handler(
         user_row.username,
         user_row.password,
         chrono::Utc::now()
-    ).execute(&db_pool).await
+    ).execute(&state.db_pool).await
     .map_err(|e|{
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -148,11 +148,11 @@ pub struct LoginRequestBody{
 }
 
 pub async fn login_handler(
-    State(db_pool): State<PgPool>,
+    State(state): State<crate::State>,
     Json(body): Json<LoginRequestBody>
 ) -> Result<(StatusCode, String), (StatusCode, String)>{
     let user_row = sqlx::query_as!(UserRow, "SELECT username, password, id FROM users WHERE username=$1", body.username)
-        .fetch_optional(&db_pool)
+        .fetch_optional(&state.db_pool)
         .await
         .map_err(|e|{(
             StatusCode::INTERNAL_SERVER_ERROR,

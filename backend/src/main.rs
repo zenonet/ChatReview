@@ -46,11 +46,14 @@ impl Synchronizer{
         if let Some((sender, _)) = self.map.get_mut(&chat_id) {
             if let Err(e) = sender.send(Update::MessageAdded(message)){
                 println!("Sync send error: {}", e);
+            }else{
+                println!("Sent message sync!")
             }
         }
     }
 }
 
+#[derive(Clone)]
 pub struct State{
     db_pool: Pool<Postgres>,
     synchronizer: Arc<Mutex<Synchronizer>>
