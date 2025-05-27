@@ -22,7 +22,7 @@ let chat = ref(null);
 const chatId = route.params.id.toString();
 console.log(chatId)
 async function loadChat() {
-    const response = await fetch(API_URL + "/chat/" + chatId,
+    const response = await fetch(API_URL + "/chat/fromMyPerspective/" + chatId,
         {
             headers: {
                 "Authorization": "Bearer " + appState.auth.accessToken()

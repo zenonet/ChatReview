@@ -1,3 +1,5 @@
+use std::io;
+
 use crate::auth::Claims;
 use axum::Json;
 use axum::extract::Path;
@@ -24,6 +26,7 @@ pub struct Chat {
     pub name: String,
     pub description: Option<String>,
     pub messages: Vec<Message>,
+    pub is_from_perspective_a: bool,
 }
 
 struct MessageRow {
@@ -169,9 +172,49 @@ pub(crate) async fn get_random_chat(
         name: chat_row.name.unwrap(),
         description: chat_row.description,
         messages,
+        is_from_perspective_a: true
     };
 
     Ok((StatusCode::OK, json!(chat).to_string()))
+}
+
+
+async fn get_chat_row_from_id(
+    id: Uuid,
+    db_pool: &PgPool
+) -> Result<ChatRow, sqlx::Error>{
+    sqlx::query_as!(
+            ChatRow,
+            "SELECT * FROM chats WHERE id=$1",
+            id,
+        )
+        .fetch_one(db_pool)
+        .await
+}
+
+/// Loads a chat object from the database based on a chat id
+///
+/// # Errors
+///
+/// This function will return an error if the sql query fails or the chat doesn't exist
+async fn load_chat_from_db(
+    id: Uuid,
+    db_pool: &PgPool
+) -> Result<Chat, sqlx::Error>{
+    let chat = get_chat_row_from_id(id, db_pool).await?;
+
+    let messages = get_messages_from_chat_id(chat.id, &db_pool)
+        .await?;
+
+    let chat = Chat{
+        id,
+        name: chat.name.unwrap_or_default(), // default is an empty string
+        description: chat.description,
+        messages,
+        is_from_perspective_a: true
+    };
+
+    Ok(chat)
 }
 
 pub(crate) async fn get_chat_by_id(
@@ -179,37 +222,53 @@ pub(crate) async fn get_chat_by_id(
      */ State(db_pool): State<PgPool>,
     Path(chat_id): Path<Uuid>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let chat = sqlx::query_as!(
-        ChatRow,
-        "SELECT * FROM chats WHERE id=$1 LIMIT 1",
-        chat_id,
-        //user.id (if you use AND owner_id=$2 )
-    )
-    .fetch_optional(&db_pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    let Some(chat) = chat else {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            String::from("A chat with the specified id could not be found"),
-        ));
-    };
-
-    let messages = get_messages_from_chat_id(chat.id, &db_pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let chat = load_chat_from_db(chat_id, &db_pool).await.map_err(|e|{
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            e.to_string()
+        )
+    })?;
 
     Ok((
         StatusCode::OK,
-        json!(Chat {
-            id: chat_id,
-            name: chat.name.unwrap(),
-            description: chat.description,
-            messages
-        })
+        json!(chat)
         .to_string(),
     ))
+}
+
+pub(crate) async fn get_chat_by_id_from_user_perspective(
+    user: Claims,
+    State(db_pool): State<PgPool>,
+    Path(chat_id): Path<Uuid>
+) -> Result<(StatusCode, String), (StatusCode, String)>{
+
+    // I used a closure here because it allowed me to map all sql errors at once later
+    let chat: Result<Chat, sqlx::Error> = (async ||{
+        let chat_row = get_chat_row_from_id(chat_id, &db_pool).await?;
+        
+        // TODO: theoretically, these 2 request could run concurrently
+        let mut messages = get_messages_from_chat_id(chat_id, &db_pool).await?;
+
+        // if the user is user b, invert the message perspectives
+        let invert_chat = Some(user.id) == chat_row.user_id_b && user.id != chat_row.user_id_a;
+        if invert_chat{
+            messages.iter_mut().for_each(|msg|{
+                msg.is_own = !msg.is_own;
+            });
+        }
+        Ok(Chat{
+            id: chat_row.id,
+            description: chat_row.description,
+            name: chat_row.name.unwrap_or_default(),
+            messages,
+            is_from_perspective_a: !invert_chat
+        })
+    })().await;
+
+    match chat{
+        Ok(chat) => Ok((StatusCode::OK, json!(chat).to_string())),
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    }
 }
 
 #[derive(Deserialize)]
@@ -320,7 +379,7 @@ pub(crate) struct NewMessage {
 pub(crate) async fn post_message(
     user: Claims,
     State(db_pool): State<PgPool>,
-    Json(message): Json<NewMessage>,
+    Json(mut message): Json<NewMessage>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     // Check if the specified chat belongs to the user
     let user_ids = sqlx::query!(
@@ -339,6 +398,14 @@ pub(crate) async fn post_message(
 
     let is_recreated_chat = user_ids.a == user_ids.b.unwrap(); // The sql query ensures that user_id_b is never null
 
+    // If this is a chat with another person, ignore the is_owned property
+    // And always send the message from the perspective of the poster
+    if !is_recreated_chat{
+        message.is_owned_by_a = user.id == user_ids.a;
+    }
+
+
+/* 
     // Now, check if the user is allowed to send the message for that side
     if !is_recreated_chat && (message.is_owned_by_a ^ (user.id == user_ids.a)) {
         return Err((
@@ -346,6 +413,7 @@ pub(crate) async fn post_message(
             "User is not allowed to post a message from that side".to_owned(),
         ));
     }
+ */
 
     // At this point, the query would've thrown an error if the chat doesn't exist or doesn't belong to the user
 
