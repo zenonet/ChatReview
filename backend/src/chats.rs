@@ -1,11 +1,14 @@
-use std::os::linux::raw::stat;
-use std::sync::Arc;
+use std::time::Duration;
 
+use crate::auth;
 use crate::Synchronizer;
 use crate::Update;
 use crate::auth::Claims;
+use axum::body::Body;
+use axum::http::Response;
 use axum::Json;
 use axum::extract::Path;
+use axum::extract::Query;
 use axum::extract::State;
 use axum::extract::WebSocketUpgrade;
 use axum::extract::ws;
@@ -414,15 +417,18 @@ pub(crate) async fn post_message(
     );
 
     if let Ok(_) = query.execute(&state.db_pool).await {
-
-        let msg = Message{
+        let msg = Message {
             id: message_id,
             content: message.content,
             is_own: message.is_owned_by_a,
             avg_rating: 0f64,
         };
 
-        state.synchronizer.lock().await.post_message(message.chat_id, msg);
+        state
+            .synchronizer
+            .lock()
+            .await
+            .post_message(message.chat_id, msg);
         Ok(StatusCode::CREATED)
     } else {
         Err((
@@ -526,18 +532,52 @@ WHERE message_id = $1
     }
 }
 
+#[derive(Deserialize)]
+struct WebSocketHandshake {
+    token: Option<String>,
+}
+
 pub(crate) async fn websocket_chat_updates(
     ws: WebSocketUpgrade,
     State(state): State<crate::State>,
     Path(chat_id): Path<Uuid>,
-) -> impl IntoResponse {
+) -> Response<Body> {
     let mut synchronizer = state.synchronizer.lock().await;
     let mut receiver = synchronizer.get_receiver(chat_id);
     drop(synchronizer);
 
-    ws.on_upgrade(async move |mut socket| {
-        loop {
+    let Ok(chat) = get_chat_row_from_id(chat_id, &state.db_pool).await else{
+        return Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body(Body::new("The chat does not exist (or the db failed lol)".to_owned()))
+            .unwrap();
+    };
 
+    ws.on_upgrade(async move |mut socket| {
+        let mut user: Option<Claims> = None;
+        if let Ok(Some(Ok(msg))) = tokio::time::timeout(Duration::from_millis(3), socket.recv()).await
+        {
+            let Ok(Ok(data)) = msg
+                .to_text()
+                .and_then(|txt| Ok(serde_json::from_str::<WebSocketHandshake>(txt)))
+            else {
+                return;
+            };
+
+            let claims = data.token.and_then(|token|{ Some(auth::validate_token(&token)) });
+
+            if let Some(Ok(claims)) = claims{
+                user = Some(claims);
+            }
+        }
+
+        let invert_messages = if let Some(user) = user{
+            chat.user_id_a != user.id && chat.user_id_b == Some(user.id)
+        }else{ false };
+
+        // Ignore the current value, we're only interesting in changes
+        receiver.mark_unchanged();
+        loop {
             if receiver.changed().await.is_err() {
                 let _ = socket
                     .send(ws::Message::Close(Some(CloseFrame {
@@ -549,16 +589,21 @@ pub(crate) async fn websocket_chat_updates(
                 break;
             }
 
-            println!("Message sync received!");
-
             // Cloning the value somehow fixes the fact that the
             // smart pointer coming out of borrow() is not `Send`
             // Axum enforces that the future coming out of this async closure is `Send` though
             let update = receiver.borrow().clone();
 
-            if let Update::MessageAdded(msg) = update {
+            if let Update::MessageAdded(mut msg) = update {
+
+                msg.is_own ^= invert_messages;
+
                 let json_msg = json!(msg).to_string() + "\n";
-                socket.send(ws::Message::text(json_msg)).await.unwrap();
+                let res = socket.send(ws::Message::text(json_msg)).await;
+
+                if res.is_err() {
+                    break;
+                }
             }
         }
     })

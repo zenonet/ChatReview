@@ -6,7 +6,6 @@ use axum::Json;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::PgPool;
 
 use argon2::{
     password_hash::{
@@ -46,27 +45,36 @@ type Rejection = (StatusCode, String);
         let _ = state;
         if let Some(token) = parts.headers.get("Authorization") {
             let token = token.to_str().unwrap();
-            if !token.starts_with("Bearer "){
-                return Err((
-                    StatusCode::UNAUTHORIZED,
-                    String::from("The provided token was in the wrong format")
-                ));
-            }
-            let token: &str = &token[7..];
-            if let Ok(token_data) = jsonwebtoken::decode::<Claims>(
-                token,
-                &DecodingKey::from_base64_secret(&std::env::var("JWT_SECRET").unwrap()).unwrap(),
-                &Validation::default()
-            ){
-                return Ok(token_data.claims)
-            }
+            return validate_token(token);
         }
+        
         return Err((
             StatusCode::UNAUTHORIZED,
-            String::from("Invalid token")
+            String::from("The route you called requires authorization")
         ))
-        
     }
+}
+
+pub(crate) fn validate_token(token: &str) -> Result<Claims, (StatusCode, String)> {
+    if !token.starts_with("Bearer "){
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            String::from("The provided token was in the wrong format")
+        ));
+    }
+    let token: &str = &token[7..];
+    if let Ok(token_data) = jsonwebtoken::decode::<Claims>(
+        token,
+        &DecodingKey::from_base64_secret(&std::env::var("JWT_SECRET").unwrap()).unwrap(),
+        &Validation::default()
+    ){
+        return Ok(token_data.claims)
+    }
+
+    return Err((
+        StatusCode::UNAUTHORIZED,
+        String::from("Invalid token")
+    ))
 }
 
 
