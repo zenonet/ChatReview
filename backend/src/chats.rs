@@ -1,14 +1,21 @@
-use std::io;
+use std::sync::Arc;
 
+use crate::Synchronizer;
+use crate::Update;
 use crate::auth::Claims;
 use axum::Json;
 use axum::extract::Path;
 use axum::extract::State;
+use axum::extract::WebSocketUpgrade;
+use axum::extract::ws;
+use axum::extract::ws::CloseFrame;
 use axum::http::StatusCode;
+use axum::response::IntoResponse;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{FromRow, PgPool};
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, FromRow)]
@@ -41,7 +48,7 @@ struct MessageRow {
     avg_rating: Option<f64>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Message {
     #[serde(default)]
     pub id: Uuid,
@@ -172,22 +179,14 @@ pub(crate) async fn get_random_chat(
         name: chat_row.name.unwrap(),
         description: chat_row.description,
         messages,
-        is_from_perspective_a: true
+        is_from_perspective_a: true,
     };
 
     Ok((StatusCode::OK, json!(chat).to_string()))
 }
 
-
-async fn get_chat_row_from_id(
-    id: Uuid,
-    db_pool: &PgPool
-) -> Result<ChatRow, sqlx::Error>{
-    sqlx::query_as!(
-            ChatRow,
-            "SELECT * FROM chats WHERE id=$1",
-            id,
-        )
+async fn get_chat_row_from_id(id: Uuid, db_pool: &PgPool) -> Result<ChatRow, sqlx::Error> {
+    sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE id=$1", id,)
         .fetch_one(db_pool)
         .await
 }
@@ -197,21 +196,17 @@ async fn get_chat_row_from_id(
 /// # Errors
 ///
 /// This function will return an error if the sql query fails or the chat doesn't exist
-async fn load_chat_from_db(
-    id: Uuid,
-    db_pool: &PgPool
-) -> Result<Chat, sqlx::Error>{
+async fn load_chat_from_db(id: Uuid, db_pool: &PgPool) -> Result<Chat, sqlx::Error> {
     let chat = get_chat_row_from_id(id, db_pool).await?;
 
-    let messages = get_messages_from_chat_id(chat.id, &db_pool)
-        .await?;
+    let messages = get_messages_from_chat_id(chat.id, &db_pool).await?;
 
-    let chat = Chat{
+    let chat = Chat {
         id,
         name: chat.name.unwrap_or_default(), // default is an empty string
         description: chat.description,
         messages,
-        is_from_perspective_a: true
+        is_from_perspective_a: true,
     };
 
     Ok(chat)
@@ -222,52 +217,45 @@ pub(crate) async fn get_chat_by_id(
      */ State(db_pool): State<PgPool>,
     Path(chat_id): Path<Uuid>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let chat = load_chat_from_db(chat_id, &db_pool).await.map_err(|e|{
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string()
-        )
-    })?;
+    let chat = load_chat_from_db(chat_id, &db_pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    Ok((
-        StatusCode::OK,
-        json!(chat)
-        .to_string(),
-    ))
+    Ok((StatusCode::OK, json!(chat).to_string()))
 }
 
 pub(crate) async fn get_chat_by_id_from_user_perspective(
     user: Claims,
     State(db_pool): State<PgPool>,
-    Path(chat_id): Path<Uuid>
-) -> Result<(StatusCode, String), (StatusCode, String)>{
-
+    Path(chat_id): Path<Uuid>,
+) -> Result<(StatusCode, String), (StatusCode, String)> {
     // I used a closure here because it allowed me to map all sql errors at once later
-    let chat: Result<Chat, sqlx::Error> = (async ||{
+    let chat: Result<Chat, sqlx::Error> = (async || {
         let chat_row = get_chat_row_from_id(chat_id, &db_pool).await?;
-        
+
         // TODO: theoretically, these 2 request could run concurrently
         let mut messages = get_messages_from_chat_id(chat_id, &db_pool).await?;
 
         // if the user is user b, invert the message perspectives
         let invert_chat = Some(user.id) == chat_row.user_id_b && user.id != chat_row.user_id_a;
-        if invert_chat{
-            messages.iter_mut().for_each(|msg|{
+        if invert_chat {
+            messages.iter_mut().for_each(|msg| {
                 msg.is_own = !msg.is_own;
             });
         }
-        Ok(Chat{
+        Ok(Chat {
             id: chat_row.id,
             description: chat_row.description,
             name: chat_row.name.unwrap_or_default(),
             messages,
-            is_from_perspective_a: !invert_chat
+            is_from_perspective_a: !invert_chat,
         })
-    })().await;
+    })()
+    .await;
 
-    match chat{
+    match chat {
         Ok(chat) => Ok((StatusCode::OK, json!(chat).to_string())),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
     }
 }
 
@@ -355,14 +343,11 @@ pub(crate) async fn create_chat_with_random(
 
         match res {
             Ok(_) => Ok((StatusCode::CREATED, String::from("Created chat request"))),
-            Err(e) => {
-                Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to create new chat request: {}", e)
-                ))
-            }
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to create new chat request: {}", e),
+            )),
         }
-        
     }
 }
 
@@ -400,20 +385,19 @@ pub(crate) async fn post_message(
 
     // If this is a chat with another person, ignore the is_owned property
     // And always send the message from the perspective of the poster
-    if !is_recreated_chat{
+    if !is_recreated_chat {
         message.is_owned_by_a = user.id == user_ids.a;
     }
 
-
-/* 
-    // Now, check if the user is allowed to send the message for that side
-    if !is_recreated_chat && (message.is_owned_by_a ^ (user.id == user_ids.a)) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "User is not allowed to post a message from that side".to_owned(),
-        ));
-    }
- */
+    /*
+       // Now, check if the user is allowed to send the message for that side
+       if !is_recreated_chat && (message.is_owned_by_a ^ (user.id == user_ids.a)) {
+           return Err((
+               StatusCode::BAD_REQUEST,
+               "User is not allowed to post a message from that side".to_owned(),
+           ));
+       }
+    */
 
     // At this point, the query would've thrown an error if the chat doesn't exist or doesn't belong to the user
 
@@ -530,4 +514,41 @@ WHERE message_id = $1
         )),
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
     }
+}
+
+pub(crate) async fn websocket_chat_updates(
+    ws: WebSocketUpgrade,
+    State(db_pool): State<PgPool>,
+    State(mut synchronizer): State<Arc<Mutex<Synchronizer>>>,
+    Path(chat_id): Path<Uuid>,
+) -> impl IntoResponse {
+    let mut synchronizer = synchronizer.lock().await;
+    let mut receiver = synchronizer.get_receiver(chat_id);
+    drop(synchronizer);
+
+    ws.on_upgrade(async move |mut socket| {
+        loop {
+            let chat_id = chat_id;
+
+            if receiver.changed().await.is_err() {
+                socket
+                    .send(ws::Message::Close(Some(CloseFrame {
+                        code: 500u16,
+                        reason: "Synchronization error".into(),
+                    })))
+                    .await;
+                break;
+            } 
+
+            // Cloning the value somehow fixes the fact that the
+            // smart pointer coming out of borrow() is not `Send`
+            // Axum enforces that the future coming out of this async closure is `Send` though
+            let update = receiver.borrow().clone();
+
+            if let Update::MessageAdded(msg) = update {
+                let json_msg = json!(msg).to_string();
+                socket.send(ws::Message::text(json_msg)).await.unwrap();
+            }
+        }
+    })
 }

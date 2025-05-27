@@ -1,14 +1,60 @@
-use std::time::Duration;
+use std::{collections::{hash_map::Entry, HashMap, HashSet}, sync::Arc, time::Duration};
 
 use axum::{
-    routing::{delete, get, post}, Router
+    extract::ws, routing::{any, delete, get, post}, Router
 };
-use sqlx::postgres::PgPoolOptions;
-use tokio::net::TcpListener;
+use chats::Message;
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+use tokio::{net::TcpListener, sync::{watch::{Receiver, Sender}, Mutex}};
 use tower_http::cors::{Any, CorsLayer};
+use uuid::Uuid;
 mod auth;
 mod chats;
 mod stats;
+
+#[derive(Clone)]
+pub enum Update{
+    Empty,
+    MessageAdded(Message)
+}
+
+pub struct Synchronizer{
+    map: HashMap<Uuid, (Sender<Update>, Receiver<Update>)>
+} 
+
+impl Synchronizer{
+    pub fn new() -> Synchronizer{
+        Synchronizer{
+            map: HashMap::<_, _>::new()
+        }
+    }
+
+
+    pub fn get_receiver(&mut self, chat_id: Uuid) -> Receiver<Update>{
+        let (_, receiver) = match self.map.entry(chat_id) {
+            Entry::Occupied(o) => {
+                    o.into_mut()
+            },
+            Entry::Vacant(v) => {
+                v.insert(tokio::sync::watch::channel(Update::Empty))
+            }
+        };
+        receiver.clone()
+    }
+
+    pub fn post_message(&mut self, chat_id: Uuid, message: Message){
+        if let Some((sender, _)) = self.map.get_mut(&chat_id) {
+            if let Err(e) = sender.send(Update::MessageAdded(message)){
+                println!("Sync send error: {}", e);
+            }
+        }
+    }
+}
+
+pub struct State{
+    db_pool: Pool<Postgres>,
+    synchronizer: Arc<Mutex<Synchronizer>>
+}
 
 #[tokio::main]
 async fn main() {
@@ -34,7 +80,17 @@ async fn main() {
 
     println!("listening on http://{}", listener.local_addr().unwrap());
 
+
+    let synchronizer = Synchronizer::new();
+    let async_hronizer = Arc::new(Mutex::new(synchronizer));
+
     //let auth_middleware = axum::middleware::from_fn(auth::auth_middleware);
+
+
+    let state = State{
+        db_pool,
+        synchronizer: async_hronizer
+    };
 
     // compose the routes
     let app = Router::new()
@@ -57,18 +113,19 @@ async fn main() {
         .route("/login/", post(auth::login_handler))
 
         .route("/stats/", get(stats::get_stats))
-        //.route("/tasks/:task_id", patch(update_task).delete(delete_task))
+        .route("/ws/{chatId}", any(chats::websocket_chat_updates))
+
         .layer(
             CorsLayer::new()
                 .allow_origin([
-                    #[cfg(debug_assertions)]
+                    "http://192.168.1.200:3000".parse().unwrap(),
                     "http://localhost:3000".parse().unwrap(),
                     "https://zenonet.de".parse().unwrap(),
                 ])
                 .allow_methods(Any)
                 .allow_headers(Any),
         )
-        .with_state(db_pool);
+        .with_state(state);
 
     //serve the application
     axum::serve(listener, app)
