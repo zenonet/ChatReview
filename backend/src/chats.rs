@@ -16,10 +16,9 @@ use chrono::DateTime;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use sqlx::{FromRow, PgPool};
+use sqlx::PgPool;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, FromRow)]
 struct ChatRow {
     id: Uuid,
     name: Option<String>,
@@ -34,7 +33,10 @@ pub struct Chat {
     pub name: String,
     pub description: Option<String>,
     pub messages: Vec<Message>,
+    #[serde(rename = "isFromPerspectiveA")]
     pub is_from_perspective_a: bool,
+    #[serde(rename = "isPendingRequest")]
+    pub is_pending_request: bool
 }
 
 struct MessageRow {
@@ -76,7 +78,17 @@ pub(crate) async fn get_my_chats(
             StatusCode::INTERNAL_SERVER_ERROR,
             json!({"success": false, "message": e.to_string()}).to_string(),
         )
-    })?;
+    })?
+    .into_iter().map(|row|{
+        Chat{
+            id: row.id,
+            name: row.name.unwrap_or_default(),
+            description: row.description,
+            messages: vec![],
+            is_from_perspective_a: false,
+            is_pending_request: row.user_id_b.is_none()
+        }
+    }).collect::<Vec<Chat>>();
 
     Ok((StatusCode::OK, json!(rows).to_string()))
 }
@@ -181,6 +193,7 @@ pub(crate) async fn get_random_chat(
         description: chat_row.description,
         messages,
         is_from_perspective_a: true,
+        is_pending_request: chat_row.user_id_b.is_none() // TODO: Maybe don't show pending request in the feed lol
     };
 
     Ok((StatusCode::OK, json!(chat).to_string()))
@@ -208,6 +221,7 @@ async fn load_chat_from_db(id: Uuid, db_pool: &PgPool) -> Result<Chat, sqlx::Err
         description: chat.description,
         messages,
         is_from_perspective_a: true,
+        is_pending_request: chat.user_id_b.is_none()
     };
 
     Ok(chat)
@@ -250,6 +264,7 @@ pub(crate) async fn get_chat_by_id_from_user_perspective(
             name: chat_row.name.unwrap_or_default(),
             messages,
             is_from_perspective_a: !invert_chat,
+            is_pending_request: chat_row.user_id_b.is_none()
         })
     })()
     .await;
