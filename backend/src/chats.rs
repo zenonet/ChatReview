@@ -582,8 +582,6 @@ pub(crate) async fn websocket_chat_updates(
 
             let claims = (data.token.as_ref()).and_then(|token|{ Some(auth::validate_token(token)) });
 
-            println!("data: {:#?}", data);
-
             if let Some(Ok(claims)) = claims{
                 user = Some(claims);
             }
