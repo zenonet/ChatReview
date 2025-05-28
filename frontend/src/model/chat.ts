@@ -3,6 +3,8 @@ export class Chat{
     name: String
     description: String
     messages: Message[]
+    isFromPerspectiveA: boolean = true
+    isPendingRequest: boolean = false
 
     constructor(){
         this.messages = [];

@@ -1,10 +1,11 @@
-<script setup lang="js">
+<script setup lang="ts">
+import { Chat } from '@/model/chat';
 import { API_URL, appState } from '../global';
 import router from '../routes';
 
 let chats = await loadChats();
 console.log(chats)
-async function loadChats() {
+async function loadChats(): Promise<Chat[]> {
     const res = await fetch(API_URL + "/mychats/", {
         headers: {
             "Authorization": "Bearer " + appState.auth.accessToken(),
@@ -47,7 +48,7 @@ async function createChatWithRandomClicked() {
 <template>
 
     <div class="page" style="justify-content: flex-start;">
-        <div style="display: flex; max-width: 80vw;">
+        <div class="button-row" style="max-width: 80vw;">
             <div style="flex: 1"></div>
             <button v-on:click="createChatClicked">New Chat</button>
             <button v-on:click="createChatWithRandomClicked">Chat with random</button>
@@ -55,7 +56,7 @@ async function createChatWithRandomClicked() {
         <div class="list">
             <h2>Your chats:</h2>
             <div v-for="chat in chats">
-                <RouterLink :to="'/edit/' + chat.id" v-text="chat.name" />
+                <RouterLink :to="'/edit/' + chat.id" v-text="chat.name + (chat.isPendingRequest ? '  (pending)' : '')" />
             </div>
         </div>
 
