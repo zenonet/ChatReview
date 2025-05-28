@@ -32,7 +32,7 @@ async function loadChat() {
     chat.value = await response.json();
 }
 
-async function getLiveUpdates(){
+async function getLiveUpdates() {
     const sock = new WebSocket(WEBSOCKET_SERVER_URL + "/ws/" + chatId);
 
     sock.onopen = (e) => {
@@ -51,7 +51,7 @@ async function getLiveUpdates(){
 }
 
 
-async function sendMessage(msg: Message){
+async function sendMessage(msg: Message) {
     const resp = await fetch(API_URL + "/message/", {
         method: "POST",
         headers: {
@@ -94,17 +94,19 @@ getLiveUpdates()
 
 <template>
     <div style="display:flex; flex-direction: column; min-height: 100vh;">
-        <ChatView v-if="chat != null" :key="chatViewKey" :chat="chat" />
-        <div v-else>Loading chat...</div>
-        <div style="display: flex; gap: 15px">
-            <input class="chat-input" style="flex: 1" placeholder="Type a message here..." v-model="message"
-                v-on:keyup.enter="sendMessageClick" />
-             <label class="switch">
-                <input type="checkbox" v-model="isOwn">
-                <span class="slider"></span>
-            </label>
-            <button v-on:click="sendMessageClick">Send</button>
-        </div>
+        <template v-if="chat != null">
+            <ChatView :key="chatViewKey" :chat="chat" />
+            <div style="display: flex; gap: 15px">
+                <input class="chat-input" style="flex: 1" placeholder="Type a message here..." v-model="message"
+                    v-on:keyup.enter="sendMessageClick" />
+                <label class="switch">
+                    <input type="checkbox" v-model="isOwn">
+                    <span class="slider"></span>
+                </label>
+                <button v-on:click="sendMessageClick">Send</button>
+            </div>
+        </template>
+        <h2 style="text-align: center;" v-else>Loading chat...</h2>
     </div>
 </template>
 
