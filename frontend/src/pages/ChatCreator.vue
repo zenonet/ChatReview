@@ -5,6 +5,7 @@ import router from '../routes';
 
 
 let chatName = ref("")
+let description = ref("")
 
 
 appState.auth.redirectIfNotLoggedIn()
@@ -21,6 +22,7 @@ async function createChat(){
         },
         body: JSON.stringify({
             name: chatName.value,
+            description: description.value
         })
     })
     res.maybeRedirectToLogin();
@@ -49,6 +51,10 @@ async function createChat(){
                 <label>Chat Name</label>
                 <input v-model="chatName" maxlength="128" />
             </div>
+            <div class="field-container">
+                <label>Context: </label>
+                <textarea v-model="description" placeholder="Write something about the situation or your relation to the other person"/>
+            </div>
             <div>
                 <button v-on:click="createChat">Create</button>
             </div>
@@ -66,7 +72,7 @@ async function createChat(){
     flex-direction: column;
     margin: auto;
     margin-top: 50pt;
-    gap: 5pt;
+    gap: 10pt;
 }
 
 h2{

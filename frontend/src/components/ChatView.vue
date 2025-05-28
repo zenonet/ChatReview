@@ -14,8 +14,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-    <div v-if="chat">
+    <div v-if="chat" class="container" style="align-items: center">
         <h2 style="text-align: center;">{{ chat?.name }}</h2>
+        <p v-if="chat.description">{{ chat.description }}</p>
+        <template v-else></template>
         <div class="msg-list">
             <ChatMessage 
             v-for="msg of chat?.messages" 

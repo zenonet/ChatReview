@@ -51,7 +51,9 @@ p {
     max-width: 20cm;
 }
 
+textarea,
 input{
+    font-family: inherit;
     font-size: large;
     border: var(--primary) 2px solid;
     background: var(--background);
