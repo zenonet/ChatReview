@@ -1,25 +1,22 @@
 use std::time::Duration;
 
 use crate::auth;
-use crate::Synchronizer;
-use crate::Update;
 use crate::auth::Claims;
+use crate::Update;
 use axum::body::Body;
+use axum::extract::State;
 use axum::http::Response;
 use axum::Json;
 use axum::extract::Path;
-use axum::extract::Query;
-use axum::extract::State;
 use axum::extract::WebSocketUpgrade;
 use axum::extract::ws;
 use axum::extract::ws::CloseFrame;
 use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{FromRow, PgPool};
-use tokio::sync::Mutex;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, FromRow)]
@@ -532,7 +529,7 @@ WHERE message_id = $1
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct WebSocketHandshake {
     token: Option<String>,
 }
@@ -555,7 +552,11 @@ pub(crate) async fn websocket_chat_updates(
 
     ws.on_upgrade(async move |mut socket| {
         let mut user: Option<Claims> = None;
-        if let Ok(Some(Ok(msg))) = tokio::time::timeout(Duration::from_millis(3), socket.recv()).await
+
+        // wait for a handshake message for a second
+        let msg = tokio::time::timeout(Duration::from_millis(1000), socket.recv()).await;
+
+        if let Ok(Some(Ok(msg))) = msg
         {
             let Ok(Ok(data)) = msg
                 .to_text()
@@ -564,7 +565,9 @@ pub(crate) async fn websocket_chat_updates(
                 return;
             };
 
-            let claims = data.token.and_then(|token|{ Some(auth::validate_token(&token)) });
+            let claims = (data.token.as_ref()).and_then(|token|{ Some(auth::validate_token(token)) });
+
+            println!("data: {:#?}", data);
 
             if let Some(Ok(claims)) = claims{
                 user = Some(claims);
@@ -589,12 +592,9 @@ pub(crate) async fn websocket_chat_updates(
                 break;
             }
 
-            // Cloning the value somehow fixes the fact that the
-            // smart pointer coming out of borrow() is not `Send`
-            // Axum enforces that the future coming out of this async closure is `Send` though
             let update = receiver.borrow().clone();
 
-            if let Update::MessageAdded(mut msg) = update {
+            if let Update::MessageAdded(mut msg) = update{
 
                 msg.is_own ^= invert_messages;
 

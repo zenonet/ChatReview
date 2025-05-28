@@ -4,6 +4,7 @@ import { loadRouteLocation } from "vue-router";
 import router from "./routes";
 
 export const API_URL = import.meta.env.PUBLIC_API_URL;
+export const WEBSOCKET_SERVER_URL = import.meta.env.PUBLIC_WEBSOCKET_SERVER_URL;
 
 export let appState = reactive({
     redirectAfterLogin: String = null,

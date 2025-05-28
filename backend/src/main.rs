@@ -1,7 +1,7 @@
-use std::{collections::{hash_map::Entry, HashMap, HashSet}, sync::Arc, time::Duration};
+use std::{collections::{hash_map::Entry, HashMap}, sync::Arc, time::Duration};
 
 use axum::{
-    extract::ws, routing::{any, delete, get, post}, Router
+    routing::{any, delete, get, post}, Router
 };
 use chats::Message;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};

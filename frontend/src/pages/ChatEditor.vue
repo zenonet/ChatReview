@@ -2,7 +2,7 @@
 import { reactive, Ref, ref } from 'vue';
 import { Chat, Message } from '../model/chat';
 import ChatView from './../components/ChatView.vue';
-import { API_URL, appState } from '../global';
+import { API_URL, appState, WEBSOCKET_SERVER_URL } from '../global';
 import { useRoute } from 'vue-router';
 
 
@@ -32,6 +32,24 @@ async function loadChat() {
     chat.value = await response.json();
 }
 
+async function getLiveUpdates(){
+    const sock = new WebSocket(WEBSOCKET_SERVER_URL + "/ws/" + chatId);
+
+    sock.onopen = (e) => {
+        // The token allows the api to automatically invert the chat if we're side b
+        sock.send(JSON.stringify({
+            token: "Bearer " + appState.auth.accessToken()
+        }))
+    }
+
+
+    sock.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        chat.value.messages.push(msg);
+        chatViewKey.value = chatViewKey.value + 1;
+    };
+}
+
 
 async function sendMessage(msg: Message){
     const resp = await fetch(API_URL + "/message/", {
@@ -55,8 +73,8 @@ function sendMessageClick() {
     let msg = new Message(message.value);
     msg.avg_rating = 0;
     msg.isOwn = isOwn.value;
-    chat.value.messages.push(msg);
-    chatViewKey.value = chatViewKey.value + 1;
+    //chat.value.messages.push(msg);
+    //chatViewKey.value = chatViewKey.value + 1;
 
 
     // Actually send the message
@@ -71,12 +89,13 @@ function sendMessageClick() {
     sendMessage(msg)
 }
 loadChat()
-
+getLiveUpdates()
 </script>
 
 <template>
     <div style="display:flex; flex-direction: column; min-height: 100vh;">
         <ChatView v-if="chat != null" :key="chatViewKey" :chat="chat" />
+        <div v-else>Loading chat...</div>
         <div style="display: flex; gap: 15px">
             <input class="chat-input" style="flex: 1" placeholder="Type a message here..." v-model="message"
                 v-on:keyup.enter="sendMessageClick" />
