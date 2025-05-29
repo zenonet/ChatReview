@@ -33,6 +33,10 @@ async function onDeleteAccountClicked(){
     }
 }
 
+function onAddPasskeyClicked(){
+    router.push("/addPasskey");
+}
+
 </script>
 
 <template>
@@ -46,6 +50,7 @@ async function onDeleteAccountClicked(){
 
             <div id="links" style="display: flex; flex-direction: column; align-items: flex-start; gap: 15pt">
                 <RouterLink to="/mychats" v-text="'My Chats'"/>
+                <button class="secondary" v-on:click="onAddPasskeyClicked">Add Passkey for authentication</button>
                 <button class="secondary" v-on:click="onLogoutClicked">Log out</button>
                 <button class="secondary" v-on:click="onDeleteAccountClicked">Delete account</button>
             </div>
