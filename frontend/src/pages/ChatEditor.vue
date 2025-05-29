@@ -70,6 +70,8 @@ async function sendMessage(msg: Message) {
 }
 
 function sendMessageClick() {
+    if(message.value.length === 0) return;
+
     let msg = new Message(message.value);
     msg.avg_rating = 0;
     msg.isOwn = isOwn.value;
