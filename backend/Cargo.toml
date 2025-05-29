@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = { version = "0.8.4", features = ["ws"]}
+axum = { version = "0.8.4", features = ["macros", "ws"] }
 dotenvy = "0.15.7"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
@@ -15,3 +15,4 @@ tower-http = { version = "0.6.4", features = ["cors"] }
 argon2 = "0.5.3"
 jsonwebtoken = "9.3.1"
 chrono = "0.4.34"
+webauthn-rs = "0.5.1"
