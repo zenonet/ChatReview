@@ -4,12 +4,11 @@ use axum::{
     routing::{any, delete, get, post}, Router
 };
 use chats::Message;
-use chrono::DateTime;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use tokio::{net::TcpListener, sync::{watch::{Receiver, Sender}, Mutex}};
 use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
-use webauthn_rs::prelude::{PasskeyRegistration, Url};
+use webauthn_rs::prelude::{PasskeyAuthentication, PasskeyRegistration, Url};
 mod auth;
 mod chats;
 mod stats;
@@ -58,7 +57,8 @@ pub struct State{
     db_pool: Pool<Postgres>,
     synchronizer: Arc<Mutex<Synchronizer>>,
     webauthn: Arc<webauthn_rs::Webauthn>,
-    ongoing_passkey_registrations: Arc<Mutex<[Option<(Uuid, Instant, PasskeyRegistration)>; 5]>>
+    ongoing_passkey_registrations: Arc<Mutex<[Option<(Uuid, Instant, PasskeyRegistration)>; 5]>>,
+    ongoing_passkey_logins: Arc<Mutex<[Option<(Uuid, Instant, PasskeyAuthentication)>; 10]>>
 }
 
 #[tokio::main]
@@ -103,7 +103,8 @@ async fn main() {
         db_pool,
         synchronizer: async_hronizer,
         webauthn: Arc::new(webauthn),
-        ongoing_passkey_registrations: Arc::new(Mutex::new([None, None, None, None, None]))
+        ongoing_passkey_registrations: Arc::new(Mutex::new([const { None }; 5])),
+        ongoing_passkey_logins: Arc::new(Mutex::new( [const { None }; 10]))
     };
 
     // compose the routes
@@ -125,6 +126,8 @@ async fn main() {
         //.route_layer(auth_middleware)
         .route("/register/", post(auth::register_handler))
         .route("/login/", post(auth::login_handler))
+        .route("/loginWithPasskey/", post(auth::passkey_login_handler))
+        .route("/loginWithPasskey/complete/", post(auth::complete_passkey_login))
         .route("/registerPasskey/", post(auth::register_webauthn))
         .route("/registerPasskey/complete/", post(auth::complete_register_webauthn))
 

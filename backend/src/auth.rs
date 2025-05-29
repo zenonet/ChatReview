@@ -1,8 +1,10 @@
-use std::ops::DerefMut;
+use std::borrow::Cow;
+use std::sync::{Arc};
 use std::time::Instant;
 
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
+use axum::http::HeaderMap;
 use axum::response::IntoResponse;
 use chrono::{Duration, Utc};
 use axum::{extract::State, http::StatusCode};
@@ -17,8 +19,9 @@ use argon2::{
     },
     Argon2
 };
+use tokio::sync::Mutex;
 use uuid::Uuid;
-use webauthn_rs::prelude::{RegisterPublicKeyCredential, WebauthnError};
+use webauthn_rs::prelude::{Passkey, PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse, WebauthnError};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -148,9 +151,43 @@ pub async fn register_handler(
     Ok((
         StatusCode::CREATED,
         json!({
-            "token": generate_jwt(user_row).unwrap()
+            "token": generate_jwt(user_row.id, user_row.username).unwrap()
         }).to_string()
     ))
+}
+
+
+
+/// .
+///
+/// # Panics
+///
+/// Panics if .
+async fn put_into_slot<A, B, O, const SIZE:usize>(buffer: &Arc<Mutex<[Option<(A, O, B)>;SIZE]>>, value: (A, O, B)) 
+where O : Ord + Copy {
+    let mut locked = buffer.lock().await;
+
+    // Find an empty slot
+    let slot = locked.iter_mut().find(|reg|{ reg.is_none() });
+
+    // if a slot is empty, use it
+    let slot = if let Some(slot) = slot{
+        slot
+    }else{
+        println!("Passkey registration: No empty slot available, using oldest one");
+        // If no slot is empty, clear the oldest one
+
+        locked.sort_by_key(|reg|{
+            if let Some(reg) = reg {
+                return reg.1;
+            }
+            unreachable!("Registration slots should all be some here!")
+        });
+
+        locked.get_mut(0).expect("")
+    };
+
+    *slot = Some(value);
 }
 
 
@@ -164,33 +201,7 @@ pub async fn register_webauthn(
     let (resp, registration) = res.unwrap();
 
     // Store the registration in memory until the user completes the registration process
-    {
-        let mut regs = state.ongoing_passkey_registrations.lock().await;
-
-        // Find an empty registration slot
-        let slot = regs.iter_mut().find(|reg|{ reg.is_none() });
-
-        // if a slot is empty, use it
-        let slot = if let Some(slot) = slot{
-            slot
-        }else{
-            println!("Passkey registration: No empty slot available, using oldest one");
-            // If no slot is empty, clear the oldest one
-
-            regs.sort_by_key(|reg|{
-                if let Some(reg) = reg{
-                    return reg.1;
-                }
-                unreachable!("Registration slots should all be some here!")
-            });
-
-            regs.get_mut(0).unwrap()
-        };
-
-        // Put the new registration into the slot
-        *slot = Some((user.id, Instant::now(), registration));
-    }
-
+    put_into_slot(&state.ongoing_passkey_registrations, (user.id, Instant::now(), registration)).await;
 
     Ok(json!(resp).to_string())
 }
@@ -245,6 +256,134 @@ pub async fn complete_register_webauthn(
     Ok(())
 }
 
+#[derive(Deserialize)]
+pub struct PasskeyLoginRequest{
+    pub username: String
+}
+
+pub async fn passkey_login_handler(
+    State(state): State<crate::State>,
+    Json(body): Json<PasskeyLoginRequest>
+) -> Result<impl IntoResponse, (StatusCode, String)>{
+
+    // Get token from db
+    let res = 
+        sqlx::query!("SELECT passkeys.* FROM passkeys JOIN users ON users.id = passkeys.user_id WHERE users.username = $1 LIMIT 1", body.username)
+        .fetch_all(&state.db_pool).await;
+
+    let passkey_rows = match res {
+        Ok(r) => r,
+        Err(e) => return Err((
+            StatusCode::BAD_REQUEST,
+            String::from("Couldn't find passkey")
+        ))
+    };
+
+    let passkey = passkey_rows.iter().map(|row|{
+        serde_json::from_str(&row.data)
+    })
+        .collect::<Result<Vec<Passkey>, _>>()
+        .map_err(|_|{(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            String::from("Failed to deserialize public key for passkey authentication")
+    )})?;
+
+    let res = state.webauthn.start_passkey_authentication(&passkey)
+    .map_err(|e|{(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Failed to create login challenge: {}", e)
+    )})?;
+
+
+    let user_id = passkey_rows.first().unwrap().user_id;
+
+    put_into_slot(&state.ongoing_passkey_logins, (user_id, Instant::now(), res.1)).await;
+
+    #[derive(Serialize)]
+    struct Resp{
+        user_id: Uuid,
+        challenge: RequestChallengeResponse
+    }
+
+    Ok(Json(json!({
+        "user_id": user_id,
+        "challenge": res.0
+    })))
+}
+
+
+pub async fn complete_passkey_login(
+    State(state): State<crate::State>,
+    headers: HeaderMap,
+    Json(credential): Json<PublicKeyCredential>
+) -> Result<impl IntoResponse, (StatusCode, String)>{
+
+    let Some(user_id_header) = headers.get("userId") else{
+        return Err((
+            StatusCode::BAD_REQUEST,
+            String::from("Expected userId header")
+        ));
+    };
+
+
+    let user_id: Uuid =
+    if let Ok(header_str) = user_id_header.to_str(){
+        if let Ok(id) = Uuid::try_parse(header_str){
+            id
+        }else{
+            return Err((
+                StatusCode::BAD_REQUEST,
+                String::from("Invalid userId header")
+            ))
+        }
+    }else{
+        return Err((
+            StatusCode::BAD_REQUEST,
+            String::from("Invalid userId header")
+        ))
+    };
+    
+    
+
+    let logins = state.ongoing_passkey_logins.lock().await;
+    let Some(login) = logins.iter().find(|l|{
+        l.as_ref().is_some_and(|l|{
+            l.0 == user_id
+        })
+    }) else{
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            String::from("No login challenge present for this user.")
+        ));
+    };
+    
+    let Some(login) = login else{
+        unreachable!();
+    };
+
+    let res = state.webauthn.finish_passkey_authentication(&credential, &login.2).map_err(|e|{(
+        StatusCode::UNAUTHORIZED,
+        String::from("Signature validation failed")
+    )})?;
+
+
+    let username = sqlx::query_scalar!("SELECT username FROM users WHERE id=$1", user_id)
+        .fetch_one(&state.db_pool)
+        .await
+        .map_err(|e|{(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to fetch user data: {}", e)
+        )})?;
+
+    let token = generate_jwt(user_id, username).unwrap();
+    Ok((
+        StatusCode::OK,
+        json!({
+            "token": token
+        }).to_string()
+    ))
+}
+
 
 #[derive(Deserialize)]
 pub struct LoginRequestBody{
@@ -274,7 +413,7 @@ pub async fn login_handler(
     if Argon2::default()
         .verify_password(body.password.as_bytes(), &hash).is_ok() {
             // Valid password was entered
-            let token = generate_jwt(user_row).unwrap();
+            let token = generate_jwt(user_row.id, user_row.username).unwrap();
             Ok((
                 StatusCode::OK,
                 json!({
@@ -286,12 +425,13 @@ pub async fn login_handler(
     }
 }
 
-fn generate_jwt(user: UserRow) -> Result<String, jsonwebtoken::errors::Error>{
+
+fn generate_jwt(user_id: Uuid, username: String) -> Result<String, jsonwebtoken::errors::Error>{
     jsonwebtoken::encode(
         &Header::default(),
         &Claims{
-            id: user.id,
-            username: user.username,
+            id: user_id,
+            username: username,
             exp: chrono::Utc::now().checked_add_signed(Duration::minutes(120)).unwrap().timestamp() as usize
         },
         &EncodingKey::from_base64_secret(&std::env::var("JWT_SECRET").unwrap()).unwrap()
