@@ -38,8 +38,17 @@ CREATE TABLE message_ratings(
 
 CREATE TABLE comments(
     id uuid PRIMARY KEY,
-    message_id uuid REFERENCES chat_messages(id) NOT NULL,
+    message_id uuid REFERENCES chat_messages(id) ON DELETE CASCADE NOT NULL,
     owner_id uuid REFERENCES users(id) NOT NULL,
     content text NOT NULL,
     time TIMESTAMPTZ
 );
+
+
+CREATE TABLE passkeys(
+    id uuid PRIMARY KEY,
+    user_id uuid REFERENCES users(id) NOT NULL,
+    name TEXT NOT NULL,
+    data TEXT NOT NULL,
+    creation_date TIMESTAMPTZ NOT NULL
+)

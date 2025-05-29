@@ -1,13 +1,15 @@
-use std::{collections::{hash_map::Entry, HashMap}, sync::Arc, time::Duration};
+use std::{collections::{hash_map::Entry, HashMap}, sync::Arc, time::{Duration, Instant}};
 
 use axum::{
     routing::{any, delete, get, post}, Router
 };
 use chats::Message;
+use chrono::DateTime;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
 use tokio::{net::TcpListener, sync::{watch::{Receiver, Sender}, Mutex}};
 use tower_http::cors::{Any, CorsLayer};
 use uuid::Uuid;
+use webauthn_rs::prelude::{PasskeyRegistration, Url};
 mod auth;
 mod chats;
 mod stats;
@@ -54,7 +56,9 @@ impl Synchronizer{
 #[derive(Clone)]
 pub struct State{
     db_pool: Pool<Postgres>,
-    synchronizer: Arc<Mutex<Synchronizer>>
+    synchronizer: Arc<Mutex<Synchronizer>>,
+    webauthn: Arc<webauthn_rs::Webauthn>,
+    ongoing_passkey_registrations: Arc<Mutex<[Option<(Uuid, Instant, PasskeyRegistration)>; 5]>>
 }
 
 #[tokio::main]
@@ -87,10 +91,19 @@ async fn main() {
 
     //let auth_middleware = axum::middleware::from_fn(auth::auth_middleware);
 
+    let rp_id = "localhost";
+    let rp_origin:Url = "http://localhost:3000".parse().unwrap();
+    let webauthn = 
+        webauthn_rs::WebauthnBuilder::new(rp_id, &rp_origin)
+        .expect("Invalid webauthn config")
+        .rp_name("ChatReview")
+        .build().expect("Failed to build webauthn config");
 
     let state = State{
         db_pool,
-        synchronizer: async_hronizer
+        synchronizer: async_hronizer,
+        webauthn: Arc::new(webauthn),
+        ongoing_passkey_registrations: Arc::new(Mutex::new([None, None, None, None, None]))
     };
 
     // compose the routes
@@ -112,6 +125,8 @@ async fn main() {
         //.route_layer(auth_middleware)
         .route("/register/", post(auth::register_handler))
         .route("/login/", post(auth::login_handler))
+        .route("/registerPasskey/", post(auth::register_webauthn))
+        .route("/registerPasskey/complete/", post(auth::complete_register_webauthn))
 
         .route("/stats/", get(stats::get_stats))
         .route("/ws/{chatId}", any(chats::websocket_chat_updates))

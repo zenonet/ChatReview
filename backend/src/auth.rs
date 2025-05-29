@@ -1,6 +1,10 @@
+use std::ops::DerefMut;
+use std::time::Instant;
+
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use chrono::Duration;
+use axum::response::IntoResponse;
+use chrono::{Duration, Utc};
 use axum::{extract::State, http::StatusCode};
 use axum::Json;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
@@ -14,6 +18,7 @@ use argon2::{
     Argon2
 };
 use uuid::Uuid;
+use webauthn_rs::prelude::{RegisterPublicKeyCredential, WebauthnError};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -146,6 +151,98 @@ pub async fn register_handler(
             "token": generate_jwt(user_row).unwrap()
         }).to_string()
     ))
+}
+
+
+pub async fn register_webauthn(
+    user: Claims,
+    State(state): State<crate::State>,
+) -> Result<impl IntoResponse, (StatusCode, String)>{
+    // TODO: Make sure that the user doesn't re-register the passkey
+    let res = state.webauthn.start_passkey_registration(user.id, &user.username, &user.username, None);
+    
+    let (resp, registration) = res.unwrap();
+
+    // Store the registration in memory until the user completes the registration process
+    {
+        let mut regs = state.ongoing_passkey_registrations.lock().await;
+
+        // Find an empty registration slot
+        let slot = regs.iter_mut().find(|reg|{ reg.is_none() });
+
+        // if a slot is empty, use it
+        let slot = if let Some(slot) = slot{
+            slot
+        }else{
+            println!("Passkey registration: No empty slot available, using oldest one");
+            // If no slot is empty, clear the oldest one
+
+            regs.sort_by_key(|reg|{
+                if let Some(reg) = reg{
+                    return reg.1;
+                }
+                unreachable!("Registration slots should all be some here!")
+            });
+
+            regs.get_mut(0).unwrap()
+        };
+
+        // Put the new registration into the slot
+        *slot = Some((user.id, Instant::now(), registration));
+    }
+
+
+    Ok(json!(resp).to_string())
+}
+
+pub async fn complete_register_webauthn(
+    user: Claims,
+    State(state): State<crate::State>,
+    Json(reg): Json<RegisterPublicKeyCredential>
+) -> Result<impl IntoResponse, (StatusCode, String)>{
+
+    // find registration
+    let registration = {
+        let mut regs = state.ongoing_passkey_registrations.lock().await;
+        let registration = regs.iter_mut().find(|reg|{
+            reg.as_ref().is_some_and(|reg|{
+                reg.0 == user.id
+            })
+        });
+
+        if let Some(registration) = registration{
+            // Move the registration out of app state
+            std::mem::replace(registration, None).unwrap()
+        }else{
+            return Err((
+                StatusCode::BAD_REQUEST,
+                String::from("Couldn't find ongoing registration")
+            ));
+        }
+    };
+
+    let res = state.webauthn.finish_passkey_registration(&reg, &registration.2);
+
+
+    let passkey = res.map_err(|e|{(
+        StatusCode::INTERNAL_SERVER_ERROR, 
+        format!("Failed to create passkey: {}", e)
+    )})?;
+
+    // save passkey to databse
+    let id = Uuid::new_v4();
+    sqlx::query!("INSERT INTO passkeys (id,user_id,name,data,creation_date) VALUES ($1,$2,$3,$4,$5)",
+        id,
+        user.id,
+        format!("{}'s passkey", user.username), // TODO
+        serde_json::to_string(&passkey).unwrap(),
+        Utc::now()
+    ).execute(&state.db_pool).await.map_err(|e|{(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Failed to save public key: {}", e)
+    )})?;
+
+    Ok(())
 }
 
 
