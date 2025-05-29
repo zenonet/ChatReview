@@ -1,4 +1,5 @@
 
+DROP TABLE passkeys;
 DROP TABLE message_ratings;
 DROP TABLE comments;
 DROP TABLE chat_messages;

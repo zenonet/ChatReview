@@ -279,6 +279,13 @@ pub async fn passkey_login_handler(
         ))
     };
 
+    if passkey_rows.len() == 0{
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            String::from("User doesn't have passkeys registered")
+        ))
+    }
+
     let passkey = passkey_rows.iter().map(|row|{
         serde_json::from_str(&row.data)
     })
