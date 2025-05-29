@@ -77,7 +77,15 @@ export let appState = reactive({
             data.publicKey.user.id = base64ToArrayBuffer(data.publicKey.user.id);
 
             console.log(data)
-            const credential = await navigator.credentials.create(data)
+
+
+            let credential: Credential;
+            try {
+                credential = await navigator.credentials.create(data)
+            }catch(error){
+                this.error = "Failed to communicate with authentication hardware";
+                return false;
+            }
             console.log(credential)
 
             const resp = await fetch(API_URL + "/registerPasskey/complete/", {
@@ -101,6 +109,11 @@ export let appState = reactive({
                     username: username
                 })
             });
+            
+            if(!resp.ok){ 
+                this.error = await resp.text();
+                return false;
+            }
 
             const res = await resp.json();
             let challenge:CredentialRequestOptions = res.challenge;
@@ -111,9 +124,13 @@ export let appState = reactive({
                 x.id = base64ToArrayBuffer(x.id);
             });
 
-            const credential = await navigator.credentials.get(
-                challenge
-            );
+            let credential: Credential;
+            try{
+                credential = await navigator.credentials.get(challenge);
+            }catch(error){
+                this.error = "Failed to communicate with authentication hardware";
+                return false;
+            }
 
             const answer = await fetch(API_URL + "/loginWithPasskey/complete/",{
                 method: "POST",
@@ -124,7 +141,10 @@ export let appState = reactive({
                 body: JSON.stringify(credential)
             })
 
-            if(!answer.ok) return false;
+            if(!answer.ok){ 
+                this.error = await answer.text();
+                return false;
+            }
 
             let content: any = await answer.json();
             this._accessToken = content.token;

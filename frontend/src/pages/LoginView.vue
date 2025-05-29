@@ -14,10 +14,15 @@ let errorCounter = ref(0);
 // Move this value to this component so that it doesn't affect later login tries
 let redirectAfterLogin = appState.redirectAfterLogin;
 appState.redirectAfterLogin = null;
-
+let lastError = "";
 async function handleLoginResult(result: boolean) {
     if (!result) {
-        errorCounter.value++;
+        if(lastError !== appState.auth.error){
+            errorCounter.value = 0;
+        }else{
+            errorCounter.value++;
+        }
+        lastError = appState.auth.error;
     }else{
         errorCounter.value = 0;
         if(redirectAfterLogin != null){
