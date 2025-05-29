@@ -27,7 +27,6 @@ export let appState = reactive({
                     console.log(content)
                     this._accessToken = content.token;
                     console.log("Logged in successfully!");
-                    console.log(this._accessToken)
                     this._loggedIn = true;
                     this.error = null;
                     this.username = username;
@@ -62,6 +61,80 @@ export let appState = reactive({
                 this.username = username;
                 this.saveToLocalstorage()
             }
+        },
+
+        async registerPasskey(){
+            const res = await fetch(API_URL + "/registerPasskey/", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer " + appState.auth.accessToken(),
+            }
+            });
+            let data:CredentialCreationOptions = await res.json();
+
+            // Modify the data so that browsers accept it
+            data.publicKey.challenge = base64ToArrayBuffer(data.publicKey.challenge);
+            data.publicKey.user.id = base64ToArrayBuffer(data.publicKey.user.id);
+
+            console.log(data)
+            const credential = await navigator.credentials.create(data)
+            console.log(credential)
+
+            const resp = await fetch(API_URL + "/registerPasskey/complete/", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + appState.auth.accessToken(),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(credential)
+            })
+            return resp.ok
+        },
+
+        async loginWithPasskey(username: String){
+            const resp = await fetch(API_URL + "/loginWithPasskey/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    username: username
+                })
+            });
+
+            const res = await resp.json();
+            let challenge:CredentialRequestOptions = res.challenge;
+            const userId = res.userId;
+
+            challenge.publicKey.challenge = base64ToArrayBuffer(challenge.publicKey.challenge);
+            challenge.publicKey.allowCredentials.forEach(x =>{
+                x.id = base64ToArrayBuffer(x.id);
+            });
+
+            const credential = await navigator.credentials.get(
+                challenge
+            );
+
+            const answer = await fetch(API_URL + "/loginWithPasskey/complete/",{
+                method: "POST",
+                headers: {
+                    "userId": userId,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(credential)
+            })
+
+            if(!answer.ok) return false;
+
+            let content: any = await answer.json();
+            this._accessToken = content.token;
+            console.log("Logged in successfully using passkey!");
+            this._loggedIn = true;
+            this.error = null;
+            this.username = username;
+            this.saveToLocalstorage()
+
+            return true;
         },
 
         logout() {
@@ -129,4 +202,27 @@ Response.prototype.maybeRedirectToLogin = function () {
         router.push("/login");
     }
     return this;
+}
+
+
+export function base64ToArrayBuffer(base64) {
+  // Replace URL-safe characters
+  base64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+
+  // Re-add base64 padding
+  while (base64.length % 4 !== 0) {
+    base64 += '=';
+  }
+
+  // From here, just normal base64 deserialization
+  // (shamelessly stolen from https://stackoverflow.com/a/21797381)
+  // Also pretty pathetic that there is no single function for this is js
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  return bytes.buffer;
 }

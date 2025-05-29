@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
-import { API_URL, appState } from '../global';
+import { API_URL, appState, base64ToArrayBuffer } from '../global';
 import router from '@/routes';
 import { useRoute } from 'vue-router';
 
@@ -15,8 +15,8 @@ let errorCounter = ref(0);
 let redirectAfterLogin = appState.redirectAfterLogin;
 appState.redirectAfterLogin = null;
 
-async function loginClick() {
-    if (!await appState.auth.login(username.value, password.value)) {
+async function handleLoginResult(result: boolean) {
+    if (!result) {
         errorCounter.value++;
     }else{
         errorCounter.value = 0;
@@ -29,6 +29,14 @@ async function loginClick() {
             router.replace("/")
         }
     }
+}
+
+async function loginClick(){
+    await handleLoginResult(await appState.auth.login(username.value, password.value))
+}
+
+async function loginWithPasskeyClick(){
+    await handleLoginResult(await appState.auth.loginWithPasskey(username.value));
 }
 
 async function registerClick() {
@@ -62,6 +70,7 @@ let errorMsg = computed(() =>
                 <label>Password</label>
                 <input v-model="password" v-on:keyup.enter="loginClick" type="password" />
             </div>
+            <a href="javascript:void(0)" v-on:click="loginWithPasskeyClick">Login with passkey instead</a>
 
             <span style="color: red; display: none" :style="{ 'display': errorDisplayState }">
                 {{ errorMsg }}

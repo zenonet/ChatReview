@@ -13,6 +13,7 @@ import PlatformStatistics from "./components/PlatformStatistics.vue"
 import LandingPage from "./pages/LandingPage.vue"
 import Feed from "./pages/Feed.vue"
 import ChatViewerById from "./pages/ChatViewerById.vue"
+import AddPasskey from "./pages/AddPasskey.vue"
 
 const routes: RouteRecordRaw[] = [
     { path: "/", component: LandingPage },
@@ -22,6 +23,7 @@ const routes: RouteRecordRaw[] = [
     { path: "/newchat", component: ChatCreator },
     { path: "/mychats", component: MyChatsAsync},
     { path: "/profile", component: Profile },
+    { path: "/addPasskey", component: AddPasskey },
 
     { path: "/feed", component: Feed },
 

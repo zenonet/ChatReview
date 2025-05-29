@@ -306,7 +306,7 @@ pub async fn passkey_login_handler(
     }
 
     Ok(Json(json!({
-        "user_id": user_id,
+        "userId": user_id,
         "challenge": res.0
     })))
 }
@@ -363,7 +363,7 @@ pub async fn complete_passkey_login(
 
     let res = state.webauthn.finish_passkey_authentication(&credential, &login.2).map_err(|e|{(
         StatusCode::UNAUTHORIZED,
-        String::from("Signature validation failed")
+        format!("Signature validation failed")
     )})?;
 
 
