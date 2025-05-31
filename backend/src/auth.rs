@@ -267,7 +267,7 @@ pub async fn passkey_login_handler(
 
     // Get token from db
     let res = 
-        sqlx::query!("SELECT passkeys.* FROM passkeys JOIN users ON users.id = passkeys.user_id WHERE users.username = $1 LIMIT 1", body.username)
+        sqlx::query!("SELECT passkeys.* FROM passkeys JOIN users ON users.id = passkeys.user_id WHERE users.username = $1", body.username)
         .fetch_all(&state.db_pool).await;
 
     let passkey_rows = match res {
