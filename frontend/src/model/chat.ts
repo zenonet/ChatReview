@@ -34,3 +34,9 @@ export class Stat {
 	name: string
 	value: number
 }
+
+export class Passkey {
+    name: string
+    id: string
+    creationDate: Date
+}

@@ -1,12 +1,11 @@
-use std::borrow::Cow;
 use std::sync::{Arc};
 use std::time::Instant;
 
-use axum::extract::FromRequestParts;
+use axum::extract::{FromRequestParts, Path};
 use axum::http::request::Parts;
 use axum::http::HeaderMap;
 use axum::response::IntoResponse;
-use chrono::{Duration, Utc};
+use chrono::{format, Duration, Utc};
 use axum::{extract::State, http::StatusCode};
 use axum::Json;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
@@ -21,7 +20,7 @@ use argon2::{
 };
 use tokio::sync::Mutex;
 use uuid::Uuid;
-use webauthn_rs::prelude::{Passkey, PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse, WebauthnError};
+use webauthn_rs::prelude::{Passkey, PublicKeyCredential, RegisterPublicKeyCredential, RequestChallengeResponse};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -389,6 +388,84 @@ pub async fn complete_passkey_login(
             "token": token
         }).to_string()
     ))
+}
+
+
+pub async fn get_passkeys(
+    user: Claims,
+    State(state): State<crate::State>
+) -> Result<impl IntoResponse, (StatusCode, String)>{
+
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct PasskeyResp{
+        id: Uuid,
+        name: String,
+        creation_date: Option<i64>
+    }
+
+    let passkeys = sqlx::query_as!(PasskeyResp, "SELECT id, name, extract(epoch FROM creation_date)::bigint AS creation_date FROM passkeys WHERE user_id = $1", user.id)
+    .fetch_all(&state.db_pool)
+    .await.map_err(|e|{(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        e.to_string()
+    )})?;
+
+    Ok(Json(passkeys))
+}
+
+#[derive(Deserialize)]
+pub struct RenameReq{
+    name: String
+}
+
+pub async fn rename_passkey(
+    user: Claims,
+    Path(id): Path<Uuid>,
+    State(state): State<crate::State>,
+    Json(req): Json<RenameReq>,
+) -> Result<impl IntoResponse, (StatusCode, String)>{
+
+    // TODO: Maybe validate the name
+
+    let res = sqlx::query!("UPDATE passkeys SET name = $3 WHERE id=$1 AND user_id = $2",
+        id,
+        user.id,
+        req.name
+    ).execute(&state.db_pool).await.map_err(|e|{(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("{}", e)
+    )})?;
+
+    if res.rows_affected() != 1{
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            String::from("No passkeys with that id found which you own")
+        ))
+    }
+
+    Ok(())
+}
+
+pub async fn delete_passkey(
+    user: Claims,
+    Path(id): Path<Uuid>,
+    State(state): State<crate::State>,
+) -> Result<impl IntoResponse, (StatusCode, String)>{
+
+    let res = sqlx::query!("DELETE FROM passkeys WHERE id = $1 AND user_id = $2", id, user.id).execute(&state.db_pool).await.map_err(|e|{(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Failed to delete passkey: {}", e)
+    )})?;
+
+    if res.rows_affected() == 1{
+        Ok(())
+    }else{
+        Err((
+            StatusCode::UNAUTHORIZED,
+            String::from("No passkeys with that id found which you own")
+        ))
+    }
 }
 
 

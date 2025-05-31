@@ -34,7 +34,7 @@ async function onDeleteAccountClicked(){
 }
 
 function onAddPasskeyClicked(){
-    router.push("/addPasskey");
+    router.push("/passkeys");
 }
 
 </script>

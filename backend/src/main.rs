@@ -1,7 +1,7 @@
 use std::{collections::{hash_map::Entry, HashMap}, sync::Arc, time::{Duration, Instant}};
 
 use axum::{
-    routing::{any, delete, get, post}, Router
+    routing::{any, delete, get, post, put}, Router
 };
 use chats::Message;
 use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
@@ -130,6 +130,10 @@ async fn main() {
         .route("/loginWithPasskey/complete/", post(auth::complete_passkey_login))
         .route("/registerPasskey/", post(auth::register_webauthn))
         .route("/registerPasskey/complete/", post(auth::complete_register_webauthn))
+
+        .route("/passkeys/", get(auth::get_passkeys))
+        .route("/passkey/{id}", delete(auth::delete_passkey))
+        .route("/passkey/rename/{id}", put(auth::rename_passkey))
 
         .route("/stats/", get(stats::get_stats))
         .route("/ws/{chatId}", any(chats::websocket_chat_updates))

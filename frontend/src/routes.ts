@@ -23,7 +23,7 @@ const routes: RouteRecordRaw[] = [
     { path: "/newchat", component: ChatCreator },
     { path: "/mychats", component: MyChatsAsync},
     { path: "/profile", component: Profile },
-    { path: "/addPasskey", component: AddPasskey },
+    { path: "/passkeys", component: AddPasskey },
 
     { path: "/feed", component: Feed },
 
