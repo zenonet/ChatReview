@@ -1,10 +1,11 @@
 
 
 <script lang="ts">
+	import type { Chat } from '$lib/chat';
 	import ChatView from '../../ChatView.svelte';
 
-let { data } = $props();
-console.log(data);
+    // imported from load function
+    export let data: Chat;
 </script>
 
 <h2>Feed</h2>

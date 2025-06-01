@@ -1,8 +1,10 @@
 <script lang="ts">
+	import type { Chat, Message } from '$lib/chat';
 	import ChatMessage from './ChatMessage.svelte';
 
-	const { chat, messageClicked } = $props();
-    let showRatingIndicators = false;
+    export let chat: Chat;
+    export let messageClicked: (msg: Message) => void;
+    export let showRatingIndicators: boolean = true;
 </script>
 
 <div class="container" style="align-items: center">
@@ -10,11 +12,12 @@
 	{#if chat.description}
 		<p>{chat.description}</p>
 	{/if}
+
 	<div class="msg-list">
 		{#each chat.messages as msg}
 			<ChatMessage
 				message={msg}
-				showRatingIndicator="showRatingIndicators"
+				showRatingIndicator={showRatingIndicators}
 				onclick={ () => messageClicked(msg) }
 			/>
 		{/each}

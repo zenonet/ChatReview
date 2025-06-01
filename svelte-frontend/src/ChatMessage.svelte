@@ -1,6 +1,11 @@
 
 <script lang="ts">
-    const { message, showRatingIndicator, onclick } = $props();
+	import type { Message } from "$lib/chat";
+
+    export let message: Message;
+    export let showRatingIndicator: boolean;
+    export let onclick: () => void;
+
 </script>
 
 
