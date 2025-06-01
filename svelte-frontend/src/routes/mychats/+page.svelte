@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { PUBLIC_API_URL } from '$env/static/public';
-	import { requireLogin } from '$lib/auth';
+	import { redirectToLogin, requireLogin } from '$lib/auth';
 	import type { Chat } from '$lib/chat';
 	import { userState } from '$lib/state/user.svelte';
 
@@ -9,6 +9,11 @@
 
 	let { data }: PageProps = $props();
 	let chats = data.chats;
+
+	if(data.status === 401){
+		redirectToLogin();
+	}
+
 	console.log(data);
 
 	function createChatClicked() {
@@ -48,7 +53,7 @@
 		</div>
 		<div class="list">
 			<h2>Your chats:</h2>
-			{#each chats as chat: Chat}
+			{#each chats as chat}
 				<a href="/edit/{chat.id}">{chat.name}<span class="secondary-text">{chat.isPendingRequest ? '  (pending)' : ''}</span></a>
 			{/each}
 		</div>

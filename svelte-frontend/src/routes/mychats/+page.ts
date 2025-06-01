@@ -11,6 +11,13 @@ export const load: PageLoad = async () => {
         }
     });
 
+    if (!resp.ok){
+        return {
+            chats: null,
+            status: resp.status
+        }
+    }
+
     return { 
         chats: await resp.json() as Chat[]
     };
