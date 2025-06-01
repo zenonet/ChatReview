@@ -4,13 +4,13 @@
 
     export let message: Message;
     export let showRatingIndicator: boolean;
-    export let onclick: () => void;
+    export let onclick: (() => void) | null = null;
 
 </script>
 
 
 <div class="layout-container { message.isOwn ? 'own-message' : "others-message" }">
-    <div hidden="{showRatingIndicator}" class="rating-indicator">{ message.avg_rating }</div>
+    <div hidden="{!showRatingIndicator}" class="rating-indicator">{ message.avg_rating }</div>
     <button class="message" onclick={ onclick }>
         <p style="margin: 0;">
             { message.content }

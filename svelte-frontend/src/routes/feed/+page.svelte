@@ -3,6 +3,7 @@
 <script lang="ts">
 	import type { Chat } from '$lib/chat';
 	import ChatView from '../../ChatView.svelte';
+	import ChatViewerWithDetails from '../../ChatViewerWithDetails.svelte';
 
     // imported from load function
     export let data: Chat;
@@ -10,4 +11,4 @@
 
 <h2>Feed</h2>
 
-<ChatView chat={data} messageClicked={ (msg) => {console.log(msg.content)}}></ChatView>
+<ChatViewerWithDetails chat={data}></ChatViewerWithDetails>
