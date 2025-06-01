@@ -9,6 +9,4 @@
     export let data: Chat;
 </script>
 
-<h2>Feed</h2>
-
 <ChatViewerWithDetails chat={data}></ChatViewerWithDetails>
