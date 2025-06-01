@@ -1,5 +1,7 @@
+import { PUBLIC_API_URL } from "$env/static/public";
+
 export const load = async () => {
-    const resp = await fetch("http://localhost:2555/random_chat/");
+    const resp = await fetch(`${PUBLIC_API_URL}/random_chat/`);
 
     return await resp.json();
 };

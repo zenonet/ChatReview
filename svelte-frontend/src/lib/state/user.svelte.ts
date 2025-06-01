@@ -1,13 +1,17 @@
 
 
-class User{
+export class User{
     username!: string;
     accessToken!: string;
 }
 
 function createUserState(){
     let user = $state<User | null>(null);
-    return user;
+    return {
+        get user() {return user},
+        set: (newUser: User) => user = newUser,
+        reset: () => user = null,
+    }
 }
 
 export const userState = createUserState();
