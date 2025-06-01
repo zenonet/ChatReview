@@ -1,12 +1,122 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		%sveltekit.head%
-	</head>
-	<body data-sveltekit-preload-data="hover">
-		<div style="display: contents">%sveltekit.body%</div>
-	</body>
+
+<head>
+	<meta charset="utf-8" />
+	<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+	<style>
+		* {
+			--primary: #F78E69;
+			--background: #010E14;
+			--foreground: white;
+			--foreground-secondary: rgb(161, 161, 161);
+
+			--own-message-background: #F78E69;
+			--others-message-background: #7CA5B8;
+		}
+
+
+		.secondary-text {
+			color: var(--foreground-secondary)
+		}
+
+
+		body {
+			margin: 0;
+			color: var(--foreground);
+			font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
+			/*     background-image: linear-gradient(to bottom, #020917, #101725);
+    background-repeat: no-repeat; */
+			background-color: var(--background);
+		}
+
+		.page {
+			font-size: large;
+			min-width: 95vw;
+			min-height: 100vh;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			padding-top: 5vw;
+		}
+
+
+		.container {
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+			align-items: flex-start;
+		}
+
+		.button-row {
+			display: flex;
+			flex-direction: row;
+			gap: 10pt;
+		}
+
+		p {
+			max-width: 20cm;
+		}
+
+		textarea,
+		input {
+			font-family: inherit;
+			font-size: large;
+			border: var(--primary) 2px solid;
+			background: var(--background);
+			color: var(--foreground);
+			padding: 5pt;
+			outline: none;
+			border-radius: 2pt;
+		}
+
+		input:focus {
+			filter: brightness(125%)
+		}
+
+		label {
+			font-size: 1.2em;
+		}
+
+
+		button {
+			background: var(--primary);
+			border-radius: 2pt;
+			padding: 5pt;
+			border: transparent 2px solid;
+			color: black;
+			font-size: 1em;
+		}
+
+		button.strong {
+			font-weight: bold;
+		}
+
+		button.secondary {
+			background: var(--background);
+			color: var(--primary);
+			border: var(--primary) 2px solid;
+		}
+
+		button:focus {
+			filter: brightness(125%)
+		}
+
+		a {
+			color: white;
+			text-decoration: none;
+		}
+
+		a:hover {
+			text-decoration: underline;
+		}
+	</style>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	%sveltekit.head%
+</head>
+
+<body data-sveltekit-preload-data="hover">
+	<div style="display: contents">%sveltekit.body%</div>
+</body>
+
 </html>
