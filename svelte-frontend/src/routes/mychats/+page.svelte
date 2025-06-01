@@ -49,7 +49,7 @@
 		<div class="list">
 			<h2>Your chats:</h2>
 			{#each chats as chat: Chat}
-				<a href="/chat/{chat.id}">{chat.name}<span class="secondary-text">{chat.isPendingRequest ? '  (pending)' : ''}</span></a>
+				<a href="/edit/{chat.id}">{chat.name}<span class="secondary-text">{chat.isPendingRequest ? '  (pending)' : ''}</span></a>
 			{/each}
 		</div>
 	</div>
