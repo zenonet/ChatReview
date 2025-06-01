@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts">
 	import { PUBLIC_API_URL, PUBLIC_WEBSOCKET_SERVER_URL } from '$env/static/public';
 	import { Chat, Message } from '$lib/chat';
 	import { userState } from '$lib/state/user.svelte';
