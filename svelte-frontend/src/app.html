@@ -110,6 +110,12 @@
 		a:hover {
 			text-decoration: underline;
 		}
+
+		.fading-msg-chat .message {
+			animation-name: demoChatAppear;
+			animation-fill-mode: forwards;
+			animation-timeline: view(y);
+		}
 	</style>
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	%sveltekit.head%
