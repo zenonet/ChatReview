@@ -3,7 +3,7 @@
 
 	let { children } = $props();
 
-    let user = userState.user;
+	let user = userState.user;
 </script>
 
 <nav class="bar">
@@ -16,8 +16,9 @@
 		{user == null ? 'Login' : user.username}
 	</a>
 </nav>
-
-{@render children()}
+<div>
+	{@render children()}
+</div>
 
 <style>
 	.bar {
