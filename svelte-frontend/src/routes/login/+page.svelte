@@ -1,25 +1,23 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { login, register } from '$lib/auth';
+	import { login, loginWithPasskey, register } from '$lib/auth';
     
 
     let username = $state('');
 	let password = $state('');
 
-	let errorCounter = $state(0);
+	let errorCounter = $state(1);
 
 	let error = $state<string | null>(null);
 
-	// Move this value to this component so that it doesn't affect later login tries
-	let redirectAfterLogin: string | null = page.url.searchParams.get("redirect"); //appState.redirectAfterLogin;
-	//appState.redirectAfterLogin = null;
+	let redirectAfterLogin: string | null = page.url.searchParams.get("redirect"); 
 	let lastError = '';
 	async function handleLoginResult(result: string | null) {
 		if (result != null) {
             error = result;
 			if (lastError !== result) {
-				errorCounter = 0;
+				errorCounter = 1;
 			} else {
 				errorCounter++;
 			}
@@ -41,7 +39,7 @@
 	}
 
 	async function loginWithPasskeyClick() {
-		//await handleLoginResult(await loginWithPasskey(username));
+		await handleLoginResult(await loginWithPasskey(username));
 	}
 
 	async function registerClick() {
