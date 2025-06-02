@@ -8,11 +8,16 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	let chats = data.chats;
 
-	if(data.status === 401){
+	if (data.status === 401) {
 		redirectToLogin();
 	}
+
+	if (data.chats == null) {
+		redirectToLogin();
+	}
+
+	let chats = data.chats as Chat[];
 
 	console.log(data);
 
@@ -54,7 +59,11 @@
 		<div class="list">
 			<h2>Your chats:</h2>
 			{#each chats as chat}
-				<a href="/edit/{chat.id}">{chat.name}<span class="secondary-text">{chat.isPendingRequest ? '  (pending)' : ''}</span></a>
+				<a href="/edit/{chat.id}"
+					>{chat.name}<span class="secondary-text"
+						>{chat.isPendingRequest ? '  (pending)' : ''}</span
+					></a
+				>
 			{/each}
 		</div>
 	</div>
