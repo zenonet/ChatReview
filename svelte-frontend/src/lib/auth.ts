@@ -151,7 +151,7 @@ export async function loginWithPasskey(username: string):Promise<string | null> 
 
 export function requireLogin() {
     if (userState.user === null) {
-        goto(`/login?redirect=${encodeURI(window.location.pathname)}`)
+        goto(`login?redirect=${encodeURI(window.location.pathname)}`)
     }
 }
 
@@ -160,7 +160,7 @@ export function logout() {
 }
 
 export function redirectToLogin() {
-    goto(`/login?redirect=${encodeURI(page.url.pathname)}`)
+    goto(`login?redirect=${encodeURI(page.url.pathname)}`)
 }
 
 declare global {
@@ -175,7 +175,7 @@ declare global {
 Response.prototype.maybeRedirectToLogin = function () {
     if (this.status == 401) {
         userState.reset();
-        goto(`/login?redirect=${encodeURI(page.url.pathname)}`)
+        goto(`login?redirect=${encodeURI(page.url.pathname)}`)
     }
     return this;
 }

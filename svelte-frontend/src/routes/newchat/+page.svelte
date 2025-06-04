@@ -27,7 +27,7 @@
 
 		if (res.ok) {
 			const chatId = await res.text();
-			goto(`/edit/${chatId}`);
+			goto(`edit/${chatId}`);
 			return;
 		} else {
 			console.log('Creating chat failed');

@@ -22,7 +22,7 @@
 	console.log(data);
 
 	function createChatClicked() {
-		goto('/newchat');
+		goto('newchat');
 	}
 
 	async function createChatWithRandomClicked() {
@@ -40,7 +40,7 @@
 
 		if (resp.status == 200) {
 			console.log('Found a chat partner!');
-			goto(`/edit/${chatId}`);
+			goto(`edit/${chatId}`);
 		} else if (resp.status == 201) {
 			console.log('Created chat request');
 

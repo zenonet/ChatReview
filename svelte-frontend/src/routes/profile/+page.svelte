@@ -9,7 +9,7 @@
 
 	function onLogoutClicked() {
 		logout();
-		goto('/login');
+		goto('login');
 	}
 
 	async function onDeleteAccountClicked() {
@@ -27,7 +27,7 @@
 			if (res.ok) {
 				alert('Account deleted successfully. Are you happy now?');
 				logout();
-				goto('/login');
+				goto('login');
 			} else {
 				alert(
 					'ooops, failed to delete account. Too bad.\nfr though: Contact me pls so I can fix this'
@@ -48,8 +48,8 @@
 		<div
 			id="links"
 			style="display: flex; flex-direction: column; align-items: flex-start; gap: 15pt">
-			<a href="/mychats" >My chats</a>
-			<button class="secondary" onclick={() => goto('/passkeys')}>Passkey Management</button>
+			<a href="mychats" >My chats</a>
+			<button class="secondary" onclick={() => goto('passkeys')}>Passkey Management</button>
 			<button class="secondary" onclick={onLogoutClicked}>Log out</button>
 			<button class="secondary" onclick={onDeleteAccountClicked}>Delete account</button>
 		</div>

@@ -7,7 +7,7 @@
 </script>
 
 <nav class="bar">
-	<a href="">Home</a>
+	<a href="./">Home</a>
 	<a href="feed">Feed</a>
 	<a href="mychats">My Chats</a>
 	<a href="stats">Stats</a>

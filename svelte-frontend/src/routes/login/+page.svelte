@@ -29,7 +29,7 @@
 				console.log('Redirecting to ' + redirectAfterLogin + ' after login...');
 				goto(redirectAfterLogin);
 			} else {
-				goto('/');
+				goto('./');
 			}
 		}
 	}
