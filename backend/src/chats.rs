@@ -5,6 +5,7 @@ use crate::auth::Claims;
 use crate::Update;
 use axum::body::Body;
 use axum::extract::State;
+use axum::http::HeaderMap;
 use axum::http::Response;
 use axum::Json;
 use axum::extract::Path;
@@ -17,6 +18,7 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
+use struct_iterable::Iterable;
 use uuid::Uuid;
 
 struct ChatRow {
@@ -160,8 +162,15 @@ ORDER BY m.index"#,
 // TODO: Investigate how to return objects directly and let them be serialized by axum
 pub(crate) async fn get_random_chat(
     State(state): State<crate::State>,
+    headers: HeaderMap,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let chat_row = sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE user_id_a IS NOT NULL  ORDER BY RANDOM() LIMIT 1")
+
+    let exclusion = headers.get("Exclude-Chat-Id")
+        .and_then(|header|{ header.to_str().ok() })
+        .and_then(|str|{ Uuid::parse_str(str).ok() })
+        .unwrap_or_default();
+    
+    let chat_row = sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE user_id_a IS NOT NULL AND id != $1 ORDER BY RANDOM() LIMIT 1", exclusion)
         .fetch_all(&state.db_pool)
         .await
         .map_err(|e| {
@@ -448,6 +457,25 @@ pub(crate) async fn post_message(
             String::from("creating message failed"),
         ))
     }
+}
+
+
+#[derive(Serialize, Iterable)]
+struct PatchMessageReq{
+    content: Option<String>,
+    is_owned_by_a: Option<bool>,
+    index: Option<i32>,
+}
+
+pub(crate) fn patch_message(
+    user: Claims,
+    State(state): State<crate::State>,
+    Path(id): Path<Uuid>,
+    Json(update_req): Json<PatchMessageReq>
+){
+    let mut query = String::from("UPDATE chat_messages SET");
+
+    ;
 }
 
 #[derive(Deserialize)]
