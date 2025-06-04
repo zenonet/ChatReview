@@ -49,7 +49,7 @@
 			id="links"
 			style="display: flex; flex-direction: column; align-items: flex-start; gap: 15pt">
 			<a href="/mychats" >My chats</a>
-			<button class="secondary" onclick={() => goto('/passkeys')}>Add Passkey for authentication</button>
+			<button class="secondary" onclick={() => goto('/passkeys')}>Passkey Management</button>
 			<button class="secondary" onclick={onLogoutClicked}>Log out</button>
 			<button class="secondary" onclick={onDeleteAccountClicked}>Delete account</button>
 		</div>
