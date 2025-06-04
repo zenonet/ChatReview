@@ -161,7 +161,7 @@ ORDER BY m.index"#,
 pub(crate) async fn get_random_chat(
     State(state): State<crate::State>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let chat_row = sqlx::query_as!(ChatRow, "SELECT * FROM chats ORDER BY RANDOM() LIMIT 1")
+    let chat_row = sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE user_id_a IS NOT NULL  ORDER BY RANDOM() LIMIT 1")
         .fetch_all(&state.db_pool)
         .await
         .map_err(|e| {
