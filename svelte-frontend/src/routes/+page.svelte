@@ -52,8 +52,8 @@
 	</p>
 
 	<div class="button-row" style="font-size: 1.3em; margin-top: 40px;">
-		<button class="strong" onclick={async () => await goto('/feed')}>Start reviewing</button>
-		<button class="strong" onclick={async () => await goto('/newchat')}>Publish a chat</button>
+		<button class="strong" onclick={async () => await goto('feed')}>Start reviewing</button>
+		<button class="strong" onclick={async () => await goto('newchat')}>Publish a chat</button>
 	</div>
 
 	<div id="demoChat" class="fading-msg-chat">

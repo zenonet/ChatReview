@@ -7,14 +7,16 @@
 </script>
 
 <nav class="bar">
-	<a href="/">Home</a>
-	<a href="/feed">Feed</a>
-	<a href="/mychats">My Chats</a>
-	<a href="/stats">Stats</a>
+	<a href="">Home</a>
+	<a href="feed">Feed</a>
+	<a href="mychats">My Chats</a>
+	<a href="stats">Stats</a>
 	<div style="flex: 1;"></div>
-	<a href={user == null ? '/login' : '/profile'}>
-		{user == null ? 'Login' : user.username}
-	</a>
+	{#if user}
+		<a href="profile">{user.username}</a>
+	{:else}
+		<a href="login">Login</a>
+	{/if}
 </nav>
 <div>
 	{@render children()}
