@@ -10,7 +10,8 @@ function createUserState(){
     return {
         get user() {
             if (user === null){
-                user = JSON.parse(localStorage.getItem("user") ?? "");
+                const dat = localStorage.getItem("user");
+                if(dat) user = JSON.parse(dat);
             }
             return user
         },
