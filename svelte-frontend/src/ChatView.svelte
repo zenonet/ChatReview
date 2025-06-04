@@ -3,7 +3,7 @@
 	import ChatMessage from './ChatMessage.svelte';
 
     export let chat: Chat;
-    export let messageClicked: (msg: Message) => void;
+    export let messageClicked: ((msg: Message) => void) | null = null;
     export let showRatingIndicators: boolean = true;
 </script>
 
@@ -18,7 +18,7 @@
 			<ChatMessage
 				message={msg}
 				showRatingIndicator={showRatingIndicators}
-				onclick={ () => messageClicked(msg) }
+				onclick={ () => messageClicked ?  messageClicked(msg) : 0 }
 			/>
 		{/each}
 	</div>
