@@ -91,10 +91,11 @@ async fn main() {
 
     //let auth_middleware = axum::middleware::from_fn(auth::auth_middleware);
 
-    let rp_id = "localhost";
-    let rp_origin:Url = "http://localhost:3000".parse().unwrap();
+    let rp_id = std::env::var("WEBAUTHN_RP_ID").expect("WEBAUTHN_RP_ID env-var should be set");
+    let rp_origin:Url = std::env::var("WEBAUTHN_RP_ORIGIN").expect("WEBAUTHN_RP_ORIGIN env-var should be set").parse().expect("Env-var WEBAUTHN_RP_ORIGIN should be a valid url");
+
     let webauthn = 
-        webauthn_rs::WebauthnBuilder::new(rp_id, &rp_origin)
+        webauthn_rs::WebauthnBuilder::new(&rp_id, &rp_origin)
         .expect("Invalid webauthn config")
         .rp_name("ChatReview")
         .build().expect("Failed to build webauthn config");
@@ -142,7 +143,8 @@ async fn main() {
             CorsLayer::new()
                 .allow_origin([
                     "http://192.168.1.200:3000".parse().unwrap(),
-                    "http://localhost:3000".parse().unwrap(),
+                    "http://localhost:5173".parse().unwrap(), // vite dev server
+                    "http://localhost:3000".parse().unwrap(), // rsbuild dev server
                     "https://zenonet.de".parse().unwrap(),
                 ])
                 .allow_methods(Any)
