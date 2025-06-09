@@ -43,6 +43,9 @@
 			Here you can create a new chat. After creating it, you can recreate the dialogue you've had
 			and others can peer-review it.
 		</p>
+		<p>
+			Please keep the chat extract short, anonymize names and generally respect the everyones privacy
+		</p>
 		<div class="field-container">
 			<label for="nameInput">Chat Name</label>
 			<input id="nameInput" bind:value={chatName} maxlength="128" />
