@@ -1,4 +1,5 @@
 <script>
+	import { base } from '$app/paths';
 	import { userState } from '$lib/state/user.svelte';
 
 	let { children } = $props();
@@ -7,15 +8,15 @@
 </script>
 
 <nav class="bar">
-	<a href="./">Home</a>
-	<a href="feed">Feed</a>
-	<a href="mychats">My Chats</a>
-	<a href="stats">Stats</a>
+	<a href="{base}/">Home</a>
+	<a href="{base}/feed">Feed</a>
+	<a href="{base}/mychats">My Chats</a>
+	<a href="{base}/stats">Stats</a>
 	<div style="flex: 1;"></div>
 	{#if user}
-		<a href="profile">{user.username}</a>
+		<a href="{base}/profile">{user.username}</a>
 	{:else}
-		<a href="login">Login</a>
+		<a href="{base}/login">Login</a>
 	{/if}
 </nav>
 <div>
