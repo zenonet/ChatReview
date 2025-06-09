@@ -4,17 +4,16 @@
 	import { userState } from '$lib/state/user.svelte';
 	import ChatView from '../../../ChatView.svelte';
 
-	/* const props = defineProps({
-    chatId: String || null
-}) */
-
 	let message = $state('');
 	let isOwn = $state(true);
 
 	let { data } = $props();
-	let chat: Chat = $state(data.chats);
+
+	let chat: Chat | null = $state(data.chat);
 
 	async function getLiveUpdates() {
+		if(!chat) return;
+
 		const sock = new WebSocket(PUBLIC_WEBSOCKET_SERVER_URL + '/ws/' + chat.id);
 
 		sock.onopen = (e) => {
@@ -28,11 +27,13 @@
 
 		sock.onmessage = (e) => {
 			const msg = JSON.parse(e.data);
-			chat.messages.push(msg);
+			chat?.messages.push(msg);
 		};
 	}
 
 	async function sendMessage(msg: Message) {
+		if(!chat) return;
+
 		const resp = await fetch(PUBLIC_API_URL + '/message/', {
 			method: 'POST',
 			headers: {
@@ -90,6 +91,8 @@
 			</label>
 			<button onclick={sendMessageClick}>Send</button>
 		</div>
+	{:else if data.status !== 200}
+		<h2>Failed to load chat: {data.error}</h2>
 	{:else}
 		<h2 style="text-align: center;">Loading chat...</h2>
 	{/if}

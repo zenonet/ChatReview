@@ -7,14 +7,23 @@ import { userState } from "$lib/state/user.svelte";
 import type { PageLoad } from '../$types';
 export const load: PageLoad = async ({params}) => {
 
-    console.log(params);
     const resp = await fetch(`${PUBLIC_API_URL}/chat/fromMyPerspective/${params.chatId}`, {
         headers: {
             "Authorization": `Bearer ${userState.user?.accessToken}`
         }
     });
 
+    if(!resp.ok){
+        return {
+            chat: null,
+            status: resp.status,
+            error: await resp.text()
+        }
+    }
+
     return { 
-        chats: await resp.json() as Chat[]
+        chat: await resp.json() as Chat,
+        status: resp.status,
+        error: null,
     };
 };
