@@ -13,6 +13,15 @@ as the async runtime.
     - `SERVER_ADDRESS`: The URL you want to host the API on
     - `JWT_SECRET`: 32 random bytes encoded using base64 which serve as the secret for JWT tokens
 
+### Getting 32 random bytes for the JWT_SECRET
+
+In GNU linux, you can use:
+```sh
+head -c 32 /dev/urandom | base64
+```
+
+This will read 32 random bytes, base64 encode them and send them to stdout.
+
 ## Containerization
 
 Notes:
