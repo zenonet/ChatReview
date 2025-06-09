@@ -3,6 +3,9 @@ import { pluginVue } from '@rsbuild/plugin-vue';
 
 export default defineConfig({
   plugins: [pluginVue()],
+  output: {
+    assetPrefix: "/interactive/chatReview/"
+  },
   html: {
     template: "src/index.html"
   }

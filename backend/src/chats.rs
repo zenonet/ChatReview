@@ -18,7 +18,6 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
-use struct_iterable::Iterable;
 use uuid::Uuid;
 
 struct ChatRow {
@@ -457,25 +456,6 @@ pub(crate) async fn post_message(
             String::from("creating message failed"),
         ))
     }
-}
-
-
-#[derive(Serialize, Iterable)]
-struct PatchMessageReq{
-    content: Option<String>,
-    is_owned_by_a: Option<bool>,
-    index: Option<i32>,
-}
-
-pub(crate) fn patch_message(
-    user: Claims,
-    State(state): State<crate::State>,
-    Path(id): Path<Uuid>,
-    Json(update_req): Json<PatchMessageReq>
-){
-    let mut query = String::from("UPDATE chat_messages SET");
-
-    ;
 }
 
 #[derive(Deserialize)]
