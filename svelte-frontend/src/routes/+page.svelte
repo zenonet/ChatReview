@@ -51,9 +51,14 @@
 		<strong>Let your conversations be peer-reviewed!</strong>
 	</p>
 
+	<p style="font-size: 1.2em; text-align: center">
+		You can <strong>have chats with random other users</strong> or publish real-ones you've had (keep it short and respect the others persons privacy though). And of course you can review other peoples conversations!
+	</p>
+
 	<div class="button-row" style="font-size: 1.3em; margin-top: 40px;">
 		<button class="strong" onclick={async () => await goto('feed')}>Start reviewing</button>
-		<button class="strong" onclick={async () => await goto('newchat')}>Publish a chat</button>
+		<button class="strong" onclick={async () => await goto('randomchats')}>Start a random chat</button>
+		<button class="strong secondary" onclick={async () => await goto('newchat')}>Publish a chat</button>
 	</div>
 
 	<div id="demoChat" class="fading-msg-chat">

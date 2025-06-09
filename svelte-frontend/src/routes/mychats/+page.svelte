@@ -59,23 +59,13 @@
 		<div class="list">
 			<h2>Your chats:</h2>
 			{#each chats as chat}
-				<a href="edit/{chat.id}"
-					>{chat.name}<span class="secondary-text"
-						>{chat.isPendingRequest ? '  (pending)' : ''}</span
-					></a
-				>
+				<a href="edit/{chat.id}">
+					{chat.name}
+					<span class="secondary-text">
+						{chat.isPendingRequest ? '  (pending)' : ''}
+					</span>
+				</a>
 			{/each}
 		</div>
 	</div>
 </div>
-
-<style>
-	.list {
-		margin-left: auto;
-		margin-right: auto;
-		display: flex;
-		flex-direction: column;
-		gap: 25px;
-		text-align: left;
-	}
-</style>
