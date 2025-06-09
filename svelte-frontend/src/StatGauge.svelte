@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Stat } from "$lib/chat";
+	import { untrack } from "svelte";
 
 
 	let {stat} = $props<{stat: Stat}>();
@@ -18,8 +19,13 @@
 	}
 
     $effect(() => {
-        stat; // I hope this makes stat a dependency
-        change();
+		// Run whenever stat changes
+        stat;
+
+		// Run change, but ignore that it depends on currentVal
+		untrack(() => {
+			change();
+		})
     })
 </script>
 
