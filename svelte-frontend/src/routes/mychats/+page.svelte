@@ -50,8 +50,8 @@
 </script>
 
 <div>
-	<div class="page" style="justify-content: flex-start;">
-		<div class="button-row" style="max-width: 80vw;">
+	<div class="page">
+		<div class="button-row" style="width: 80vw;">
 			<div style="flex: 1"></div>
 			<button onclick={createChatClicked}>New Chat</button>
 			<button onclick={createChatWithRandomClicked}>Chat with random</button>
