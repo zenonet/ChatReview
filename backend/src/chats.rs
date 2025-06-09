@@ -100,7 +100,7 @@ pub(crate) async fn get_my_random_chats(
 ) -> Result<Json<Vec<Chat>>, (StatusCode, String)> {
     Ok(Json::<Vec<Chat>>(sqlx::query_as!(
         ChatRow,
-        "SELECT * FROM chats WHERE (user_id_a=$1 OR user_id_b=$1) AND user_id_a != user_id_b",
+        "SELECT * FROM chats WHERE (user_id_a=$1 OR user_id_b=$1) AND (user_id_a != user_id_b OR user_id_b IS NULL)",
         user.id
     ).fetch_all(&state.db_pool)
     .await
@@ -359,7 +359,7 @@ pub(crate) async fn create_chat_with_random(
     .fetch_optional(&state.db_pool)
     .await;
 
-    let chat = match chat {
+    let chat = match chat { 
         Ok(val) => val,
         Err(e) => {
             return Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()));
