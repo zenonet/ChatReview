@@ -112,6 +112,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(|| async { "Connection to chatreview API appears to be working!" }))
         .route("/mychats/", get(chats::get_my_chats))
+        .route("/mychats/random", get(chats::get_my_random_chats))
         .route("/random_chat/", get(chats::get_random_chat))
         .route("/message/", post(chats::post_message))
         .route("/rating/", post(chats::post_rating))

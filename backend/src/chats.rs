@@ -94,6 +94,33 @@ pub(crate) async fn get_my_chats(
     Ok((StatusCode::OK, json!(rows).to_string()))
 }
 
+pub(crate) async fn get_my_random_chats(
+    user: Claims,
+    State(state): State<crate::State>
+) -> Result<Json<Vec<Chat>>, (StatusCode, String)> {
+    Ok(Json::<Vec<Chat>>(sqlx::query_as!(
+        ChatRow,
+        "SELECT * FROM chats WHERE (user_id_a=$1 OR user_id_b=$1) AND user_id_a != user_id_b",
+        user.id
+    ).fetch_all(&state.db_pool)
+    .await
+    .map_err(|e|{(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Failed to fetch chats: {}", e)
+    )})?
+    .into_iter().map(|row|{
+        Chat{
+            id: row.id,
+            name: row.name.unwrap(),
+            description: row.description,
+            messages: vec![],
+            is_from_perspective_a: false,
+            is_pending_request: row.user_id_b.is_none()
+        }
+    }).collect()))
+}
+
+
 #[derive(Deserialize)]
 pub(crate) struct NewRating {
     pub(crate) value: f64,
