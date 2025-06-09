@@ -1,17 +1,17 @@
 
 
-export class User{
+export class User {
     username!: string;
     accessToken!: string;
 }
 
-function createUserState(){
+function createUserState() {
     let user = $state<User | null>(null);
     return {
         get user() {
-            if (user === null){
+            if (user === null) {
                 const dat = localStorage.getItem("user");
-                if(dat) user = JSON.parse(dat);
+                if (dat) user = JSON.parse(dat);
             }
             return user
         },
@@ -19,7 +19,10 @@ function createUserState(){
             user = newUser
             localStorage.setItem("user", JSON.stringify(user));
         },
-        reset: () => user = null,
+        reset: () => { 
+            user = null;
+            localStorage.removeItem("user");
+        },
     }
 }
 
