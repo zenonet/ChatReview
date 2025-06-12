@@ -3,6 +3,7 @@
 	import type { Message, Comment } from '$lib/chat';
 	import { userState } from '$lib/state/user.svelte';
 	import ChatMessage from './ChatMessage.svelte';
+	import '$lib/auth';
 
 	let { message } = $props<{ message: Message }>();
 
@@ -51,7 +52,9 @@
 		res.maybeRedirectToLogin();
 
 		if (res.ok) {
+			commentVal = '';
 			console.log('Comment posted successfully!');
+			await loadComments();
 		}
 	}
 
@@ -127,16 +130,6 @@
 {/if}
 
 <style>
-	textarea {
-		background-color: var(--background);
-		color: var(--foreground);
-		border: none;
-		font-size: 1.2em;
-		height: 2lh;
-		padding: 5px;
-		margin: 5px;
-	}
-
 	#commentList {
 		display: flex;
 		flex-direction: column;
