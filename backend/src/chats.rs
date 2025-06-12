@@ -148,6 +148,36 @@ pub(crate) async fn post_rating(
     Ok(StatusCode::CREATED)
 }
 
+
+pub(crate) async fn get_my_rating(
+    user: Claims,
+    State(state): State<crate::State>,
+    Path(message_id): Path<Uuid>,
+) -> Result<String, (StatusCode, String)> {
+    let ratings = sqlx::query!("SELECT value, changed FROM message_ratings WHERE message_id=$1 AND owner_id=$2",
+        message_id,
+        user.id
+    ).fetch_all(&state.db_pool)
+    .await
+    .map_err(|e|{(
+        StatusCode::INTERNAL_SERVER_ERROR,
+        e.to_string()
+    )})?;
+
+    if let Some(rating) = ratings.first(){
+        Ok(json!({
+            "value": rating.value,
+            "lastChanged": rating.changed.timestamp()
+        }).to_string())
+    }else{
+        Err((
+            StatusCode::BAD_REQUEST,
+            String::from("No rating available")
+        ))
+    }
+}
+
+
 pub(crate) async fn get_messages_from_chat_id(
     id: Uuid,
     db_pool: &PgPool,
