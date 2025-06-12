@@ -1,6 +1,6 @@
 export class Chat{
-    id: String | null = null
-    name!: String
+    id: string | null = null
+    name!: string
     description: String | null = null
     messages: Message[]
     isFromPerspectiveA: boolean = true
@@ -12,20 +12,20 @@ export class Chat{
 }
 
 export class Message{
-    id: String | null = null
-    content:String
+    id: string | null = null
+    content:string
     isOwn: Boolean = true
     avg_rating: Number = 0
 
-    constructor(msg:String){
+    constructor(msg:string){
         this.content = msg
     }
 }
 
 export class Comment{
-    id: String | null = null
-    ownerName: String | null = null
-    content: String = "N/A"
+    id: string | null = null
+    ownerName: string | null = null
+    content: string = "N/A"
     timestamp: number = 0
 }
 
