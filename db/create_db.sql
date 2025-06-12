@@ -18,7 +18,8 @@ CREATE TABLE chats (
     name varchar(256),
     description text,
     user_id_a uuid REFERENCES users(id) NOT NULL,
-    user_id_b uuid REFERENCES users(id)
+    user_id_b uuid REFERENCES users(id),
+    is_challenge boolean NOT NULL
 );
 
 CREATE TABLE chat_messages(

@@ -26,6 +26,7 @@ struct ChatRow {
     description: Option<String>,
     user_id_a: Uuid,
     user_id_b: Option<Uuid>,
+    is_challenge: bool
 }
 
 #[derive(Serialize)]
@@ -100,7 +101,7 @@ pub(crate) async fn get_my_random_chats(
 ) -> Result<Json<Vec<Chat>>, (StatusCode, String)> {
     Ok(Json::<Vec<Chat>>(sqlx::query_as!(
         ChatRow,
-        "SELECT * FROM chats WHERE (user_id_a=$1 OR user_id_b=$1) AND (user_id_a != user_id_b OR user_id_b IS NULL)",
+        "SELECT * FROM chats WHERE (user_id_a=$1 OR user_id_b=$1) AND (user_id_a != user_id_b OR user_id_b IS NULL) AND NOT is_challenge",
         user.id
     ).fetch_all(&state.db_pool)
     .await
@@ -226,7 +227,7 @@ pub(crate) async fn get_random_chat(
         .and_then(|str|{ Uuid::parse_str(str).ok() })
         .unwrap_or_default();
     
-    let chat_row = sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE user_id_a IS NOT NULL AND id != $1 ORDER BY RANDOM() LIMIT 1", exclusion)
+    let chat_row = sqlx::query_as!(ChatRow, "SELECT * FROM chats WHERE user_id_a IS NOT NULL AND id != $1 AND NOT is_challenge ORDER BY RANDOM() LIMIT 1", exclusion)
         .fetch_all(&state.db_pool)
         .await
         .map_err(|e| {
@@ -355,7 +356,7 @@ pub(crate) async fn create_chat(
 
     // This creates a recreated chat (because both user ids are the same)
     if sqlx::query!(
-        "INSERT INTO chats (id, name, description, user_id_a, user_id_b) VALUES ($1,$2,$3,$4,$4)",
+        "INSERT INTO chats (id, name, description, user_id_a, user_id_b, is_challenge) VALUES ($1,$2,$3,$4,$4,FALSE)",
         chat_id,
         chat.name,
         chat.description,
@@ -416,7 +417,7 @@ pub(crate) async fn create_chat_with_random(
     } else {
         // No chat request exists, create a new one
         let chat_id = Uuid::new_v4();
-        let res = sqlx::query!("INSERT INTO chats (id, name, description, user_id_a, user_id_b) VALUES ($1,$2,NULL,$3, NULL)",
+        let res = sqlx::query!("INSERT INTO chats (id, name, description, user_id_a, user_id_b, is_challenge) VALUES ($1,$2,NULL,$3, NULL, FALSE)",
             chat_id,
             String::from("New random chat"),
             user.id
