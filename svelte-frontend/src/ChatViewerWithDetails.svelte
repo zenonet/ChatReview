@@ -1,17 +1,25 @@
 <script lang="ts">
 	import type { Chat, Message } from '$lib/chat';
+	import { untrack } from 'svelte';
 	import ChatView from './ChatView.svelte';
 	import MessageDetails from './MessageDetails.svelte';
 
-	let { chat } = $props<{ chat: Chat }>();
-
-	console.log('Details viewer is there');
-
+	let { chat }: { chat: Chat } = $props<{ chat: Chat }>();
+	
 	let selectedMessage = $state<Message | null>(null);
 	function onMessageClicked(msg: Message) {
 		selectedMessage = msg;
 	}
-	console.log('Details viewer is there');
+
+	$effect(() => {
+		chat;
+
+		untrack(() => {
+			const id = selectedMessage?.id;
+			let newMessage = chat.messages.find(m => m.id === id);
+			selectedMessage = newMessage ?? null;
+		})
+	})
 </script>
 
 <div class="split-layout">
