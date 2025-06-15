@@ -4,31 +4,33 @@
 	import { userState } from '$lib/state/user.svelte';
 	import ChatMessage from './ChatMessage.svelte';
 	import '$lib/auth';
+	import { untrack } from 'svelte';
+	import { invalidate } from '$app/navigation';
 
-	let { message } = $props<{ message: Message }>();
+	let { message } : {message: Message} = $props<{ message: Message }>();
 
 	let ratingInputVal = $state(0);
 
 	async function submitRating() {
-		//appState.auth.redirectIfNotLoggedIn();
 
-		let rating = {
-			messageId: message.id,
-			value: ratingInputVal
-		};
-		let res = await fetch(PUBLIC_API_URL + '/rating/', {
+		let res = await fetch(`${PUBLIC_API_URL}/rating/${message.id}`, {
 			method: 'POST',
 			headers: {
 				Authorization: 'Bearer ' + userState.user?.accessToken,
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify(rating)
+			body: JSON.stringify({
+				value: ratingInputVal
+			})
 		});
 
 		res.maybeRedirectToLogin();
 
 		if (res.ok) {
 			console.log('Rating posted successfully!');
+
+			// Reload chat to reflect rating changes
+			invalidate(`data:chat/${message.chatId}`)
 		}
 	}
 
@@ -61,18 +63,42 @@
 	let comments: Comment[] | null = $state(null);
 	async function loadComments() {
 		const resp = await fetch(PUBLIC_API_URL + '/comment/forMessage/' + message.id);
-
+		resp.logoutIfUnauthorized();
 		comments = await resp.json();
 		console.log('Comments for message loaded!');
 		console.log(comments);
 	}
 
+	async function loadOwnRating(){
+		const resp = await fetch(`${PUBLIC_API_URL}/rating/${message.id}`, {
+			headers: {
+				"Authorization": `Bearer ${userState.user?.accessToken}`
+			}
+		});
+		resp.logoutIfUnauthorized();
+
+		const data = await resp.json();
+
+		ratingInputVal = data.value;
+	}
+
+	async function load(){
+		Promise.allSettled([
+			loadComments(),
+			loadOwnRating(),
+		])	
+	}
+
 	let avgRating = $derived(() => (message.avg_rating || 0).toString());
 
 	$effect(() => {
-		if (message) loadComments();
+		if (!message) return;
+		
+		untrack(() => {
+			load();
+		});
 	});
-	loadComments();
+	load();
 
 	function formatTimestamp(timestamp: number) {
 		let date = new Date(timestamp * 1000);
@@ -96,7 +122,7 @@
 
 			<div class="container">
 				<h4>Your rating:</h4>
-				<input type="number" bind:value={ratingInputVal} />
+				<input type="number" min="-10" max="10" bind:value={ratingInputVal} />
 				<button onclick={submitRating}>Submit</button>
 			</div>
 		</div>

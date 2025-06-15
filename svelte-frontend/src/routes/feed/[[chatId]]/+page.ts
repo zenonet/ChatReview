@@ -4,7 +4,7 @@ import { PUBLIC_API_URL } from "$env/static/public";
 import type { Chat } from "$lib/chat";
 import type { RouteParams } from "./$types";
 
-export const load = async ({ params }) => {
+export const load = async ({ depends, params }) => {
     let headers: any = {};
     let resp: Response;
 
@@ -22,7 +22,15 @@ export const load = async ({ params }) => {
     }
 
     const chat:Chat = await resp.json();
+
+    for (const m of chat.messages){
+        m.chatId = chat.id ?? undefined;
+    }
+
     if(chat.id !== null) localStorage.setItem("lastFeedUuid", chat.id as string);
+
+    // Allows invalidating the chat data with this key
+    depends(`data:chat/${chat.id}`);
 
     return chat;
 };

@@ -169,6 +169,11 @@ declare global {
         Redirect to the login page if the request is unauthorized
         */
         maybeRedirectToLogin(): Response;
+
+        /*
+        Logs the user out if the response indicates the user is not authorized. This resynchronizes the clients user state with the actual one
+        */
+        logoutIfUnauthorized(): Response;
     }
 }
 
@@ -176,6 +181,14 @@ Response.prototype.maybeRedirectToLogin = function () {
     if (this.status == 401) {
         userState.reset();
         goto(`login?redirect=${encodeURI(page.url.pathname)}`)
+    }
+    return this;
+}
+
+Response.prototype.logoutIfUnauthorized = function () {
+    console.log("Logging out because request was unauthorized")
+    if (this.status == 401) {
+        userState.reset();
     }
     return this;
 }

@@ -16,6 +16,7 @@ export class Message{
     content:string
     isOwn: Boolean = true
     avg_rating: Number = 0
+    chatId?: string
 
     constructor(msg:string){
         this.content = msg

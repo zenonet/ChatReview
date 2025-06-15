@@ -125,17 +125,16 @@ pub(crate) async fn get_my_random_chats(
 #[derive(Deserialize)]
 pub(crate) struct NewRating {
     pub(crate) value: f64,
-    #[serde(alias = "messageId")]
-    pub(crate) message_id: Uuid,
 }
 
 pub(crate) async fn post_rating(
     user: Claims,
     State(state): State<crate::State>,
+    Path(message_id): Path<Uuid>,
     Json(rating): Json<NewRating>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     sqlx::query!("INSERT INTO message_ratings (message_id, owner_id, value, changed) VALUES ($1,$2,$3,$4) ON CONFLICT (message_id,owner_id) DO UPDATE SET value = $3, changed = $4",
-            rating.message_id,
+            message_id,
             user.id,
             rating.value,
             chrono::Utc::now()
@@ -342,9 +341,12 @@ pub(crate) async fn get_chat_by_id_from_user_perspective(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct NewChat {
     pub(crate) name: String,
     pub(crate) description: Option<String>,
+    #[serde(default)]
+    pub(crate) is_challenge: bool
 }
 
 pub(crate) async fn create_chat(
@@ -356,11 +358,12 @@ pub(crate) async fn create_chat(
 
     // This creates a recreated chat (because both user ids are the same)
     if sqlx::query!(
-        "INSERT INTO chats (id, name, description, user_id_a, user_id_b, is_challenge) VALUES ($1,$2,$3,$4,$4,FALSE)",
+        "INSERT INTO chats (id, name, description, user_id_a, user_id_b, is_challenge) VALUES ($1,$2,$3,$4,$4,$5)",
         chat_id,
         chat.name,
         chat.description,
-        user.id
+        user.id,
+        chat.is_challenge
     )
     .execute(&state.db_pool)
     .await
