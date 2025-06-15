@@ -4,7 +4,8 @@
 
 	let { children } = $props();
 
-	let user = userState.user;
+	// Try to load login from localstorage
+	userState.user;
 </script>
 
 <nav class="bar">
@@ -13,8 +14,8 @@
 	<a href="{base}/mychats">My Chats</a>
 	<a href="{base}/stats">Stats</a>
 	<div style="flex: 1;"></div>
-	{#if user}
-		<a href="{base}/profile">{user.username}</a>
+	{#if userState.user}
+		<a href="{base}/profile">{userState.user?.username}</a>
 	{:else}
 		<a href="{base}/login">Login</a>
 	{/if}
