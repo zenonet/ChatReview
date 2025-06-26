@@ -21,6 +21,14 @@ export const load = async ({ depends, params }) => {
         });
     }
 
+    if(!resp.ok){
+        return {
+            success: false,
+            error: await resp.text(),
+            chat: null
+        };
+    }
+
     const chat:Chat = await resp.json();
 
     for (const m of chat.messages){
@@ -32,5 +40,9 @@ export const load = async ({ depends, params }) => {
     // Allows invalidating the chat data with this key
     depends(`data:chat/${chat.id}`);
 
-    return chat;
+    return {
+        success: true,
+        error: null,
+        chat: chat,
+    };
 };

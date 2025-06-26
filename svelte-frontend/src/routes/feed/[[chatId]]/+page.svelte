@@ -25,13 +25,18 @@
 	}
 
 	function updateUrl() {
-		if (data.id && !page.params.chatId) {
-			goto(page.url.href + '/' + data.id);
+		if(!data.chat) return;
+		if (data.chat.id && !page.params.chatId) {
+			goto(page.url.href + '/' + data.chat.id);
 		}
 	}
 </script>
 
 <div style="display: flex; flex-direction: column; align-items: center; min-height: 80vh">
-	<ChatViewerWithDetails chat={data}></ChatViewerWithDetails>
+	{#if data.chat}
+		<ChatViewerWithDetails chat={data.chat}></ChatViewerWithDetails>
+	{:else}
+		<h2>Failed to load chat</h2>
+	{/if}
 	<button style="margin-top: auto" onclick={onNextChatClicked}>Next Chat</button>
 </div>
