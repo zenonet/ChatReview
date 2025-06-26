@@ -1,4 +1,5 @@
 import { goto } from "$app/navigation";
+import { base } from "$app/paths";
 import { page } from "$app/state";
 import { PUBLIC_API_URL } from "$env/static/public";
 import { User, userState } from "./state/user.svelte";
@@ -160,7 +161,7 @@ export function logout() {
 }
 
 export function redirectToLogin() {
-    goto(`login?redirect=${encodeURI(page.url.pathname)}`)
+    goto(`${base}/login?redirect=${encodeURI(page.url.pathname)}`)
 }
 
 declare global {
@@ -180,7 +181,7 @@ declare global {
 Response.prototype.maybeRedirectToLogin = function () {
     if (this.status == 401) {
         userState.reset();
-        goto(`login?redirect=${encodeURI(page.url.pathname)}`)
+        goto(`${base}/login?redirect=${encodeURI(page.url.pathname)}`)
     }
     return this;
 }
