@@ -44,7 +44,7 @@
 
 	async function registerClick() {
 		errorCounter = 0;
-		await register(username, password);
+		await handleLoginResult(await register(username, password));
 	}
 
 	let errorDisplayState = $derived(() => (error === null ? 'none' : 'block'));
@@ -55,9 +55,11 @@
 	<div class="login-container">
 		<h1>Login</h1>
 
-		<!--         <div v-if="redirectAfterLogin">
-            <span style="color: red">This action requires logging in</span>
-        </div> -->
+		{#if redirectAfterLogin !== null}
+			<div>
+				<span style="color: red">This action requires logging in</span>
+			</div>
+		{/if}
 
 		<div class="field-container">
 			<label for="usernameInput">Username</label>
