@@ -16,6 +16,11 @@
 	async function handleLoginResult(result: string | null) {
 		if (result != null) {
             error = result;
+
+			if(error.includes("duplicate key value violates unique constraint \"users_username_key\"")){
+				error = "User with that username already exists";
+			}
+
 			if (lastError !== result) {
 				errorCounter = 1;
 			} else {
