@@ -11,6 +11,9 @@
 
 	let chat: Chat | null = $state(data.chat);
 
+	// This is probably the dirties code I've ever written but I wanna get this over with
+	let isRandomChat = $derived(chat!.name !== "New random chat");
+
 	async function getLiveUpdates() {
 		if(!chat) return;
 
@@ -54,7 +57,7 @@
 	function sendMessageClick() {
 		if (message.length === 0) return;
 
-		let msg = new Message(message);
+		let msg = new Message(message)
 		msg.avg_rating = 0;
 		msg.isOwn = isOwn;
 		//chat.value.messages.push(msg);
@@ -71,7 +74,10 @@
 
 		sendMessage(msg);
 	}
-	getLiveUpdates();
+	$effect(() => {
+		if(chat) chat.description = "This chat is connected to random other user. Please be respectful and hope they respond :)";
+		getLiveUpdates();
+	})
 </script>
 
 <div style="display:flex; flex-direction: column; min-height: 100vh;">
@@ -85,10 +91,12 @@
 				bind:value={message}
 				onkeydown={(ev) => (ev.key === 'Enter' ? sendMessageClick() : 0)}
 			/>
+			{#if isRandomChat}
 			<label class="switch">
-				<input type="checkbox" bind:checked={isOwn} />
-				<span class="slider"></span>
-			</label>
+					<input type="checkbox" bind:checked={isOwn} />
+					<span class="slider"></span>
+				</label>
+			{/if}
 			<button onclick={sendMessageClick}>Send</button>
 		</div>
 	{:else if data.status !== 200}
